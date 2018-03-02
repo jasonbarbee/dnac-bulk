@@ -13,6 +13,7 @@ Latest Version tested DNA 1.1.2
 * Converts IOS to CSV format for import
 * Merges 24 to 48 port switch port in the CSV for combining (2) 24 port switches to a 48.
 * Exports Virtual Networks and Address pools. 
+* Renames FastEthernet0/XX to GigabitEthernetX/0/XX based on the stack parameter passed.
 
 # Setup Python for DNAC-Bulk Tools
 Install Python 3 and Libraries
