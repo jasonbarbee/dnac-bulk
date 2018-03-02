@@ -7,6 +7,13 @@ Copyright TekLinks, Inc 2018
 
 Latest Version tested DNA 1.1.2
 
+# Features
+* Imports CSV to DNA Switch ports
+* Exports DNA Switch ports to CSV
+* Converts IOS to CSV format for import
+* Merges 24 to 48 port switch port in the CSV for combining (2) 24 port switches to a 48.
+* Exports Virtual Networks and Address pools. 
+
 # Setup Python for DNAC-Bulk Tools
 Install Python 3 and Libraries
 ```
@@ -139,6 +146,7 @@ python3 dnac-bulk --stack 2 --input 212.yml --output 21.csv  --to48
 ```
 
 # Caveats
+* VN/Pool export shows up on screen, it does not write to CSV well yet. Partially implemented.
 * I never had to bulk 802.1x yet, we are using no authentication, so the netcopa does not reflect if the port used 802.1x or not. The import process example is for no authentication, but you can change that to any of the expected values in DNA.
 * This uses undocumented API calls to DNA, and may be volatile. I am documeting what I use it on. I had to reverse engineer the calls using Firefox Inspector on the DNA Web Interface.
 * I plan to support this through a rollout of a few hundred switches probably till late 2018, we'll see where things are at that point. 
