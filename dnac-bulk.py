@@ -18,7 +18,7 @@ from requests.auth import HTTPBasicAuth
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--action", "-a", help="set action - import, backup, export, convert, vnexport or clear")
+parser.add_argument("--action", "-a", help="set action - import, backup, export, convert, findhost, findphone, vnexport or clear")
 parser.add_argument("--input", "-i", help="set input file")
 parser.add_argument("--to48","-t", help="Convert 24 port to 48 port")
 parser.add_argument("--output", "-o", help="set output file")
@@ -223,6 +223,24 @@ def lookupHostMac(mac):
         print("DEBUG: Get Lookup MAC URL", LookupURL)
         print("DEBUG: Get Host Lookup Response", LookupResponse)
     return jsonLookup['response'][0]
+
+def getPhoneList():
+    #query for the last 4 of a mac - middle aabb
+    LookupURL = 'https://' + dnacFQDN + '/api/v1/host?subType=IP_PHONE'
+    LookupResponse = s.get(LookupURL, verify=False, headers=reqHeader)
+    jsonLookup = LookupResponse.json()
+    if jsonLookup['response'] == []:
+        print("No results found")
+        quit()
+    if len(jsonLookup['response']) < 1:
+        if 'errorCode' in jsonLookup['response'].keys():
+            if jsonLookup['response']['errorCode'] == 'Bad request':
+                print("Error in Querying for MAC Address.")
+                quit()
+    if args.debug:
+        print("DEBUG: Get Lookup MAC URL", LookupURL)
+        print("DEBUG: Get Host Lookup Response", LookupResponse)
+    return jsonLookup['response']
 
 def importDNAC():
     #auth to DNAC and store global cookie variable
@@ -526,6 +544,7 @@ def convertConfigYML():
 
 def findHost(mac):
     reqHeader['Cookie'] = authDNAC()['Cookie']
+    print("Searching for Mac Address: ", mac)
     response = lookupHostMac(mac)
     print("Host IP: ", response['hostIp'])
     print("Host MAC:", response['hostMac'])
@@ -533,6 +552,29 @@ def findHost(mac):
     print("Switch Name:", response['connectedNetworkDeviceName'])
     print("Switch Interface:", response['connectedInterfaceName'])
     quit()
+
+def findPhonePartial(mac):
+    reqHeader['Cookie'] = authDNAC()['Cookie']
+    print("Searching for Phone MAC Addresses ending with ", mac)
+    response = getPhoneList()
+    mac = mac.lower()
+    mac = re.sub(':','',mac)
+    for item in response:
+        newmac = item['hostMac']
+        newmac = newmac.lower()
+        newmac = re.sub(':','',newmac)
+        if mac in newmac:
+            break
+    if mac in newmac:
+        print("Host IP: ", item['hostIp'])
+        print("Host MAC:", item['hostMac'])
+        print("Switch Device IP:", item['connectedNetworkDeviceIpAddress'])
+        print("Switch Name:", item['connectedNetworkDeviceName'])
+        print("Switch Interface:", item['connectedInterfaceName'])
+        quit()
+    else:
+        print("No matches.")
+        quit()
 # MAIN Program
 
 
@@ -555,4 +597,10 @@ if args.action == "vnexport":
     exportVNs()
 if args.action == "findhost":
     findHost(args.mac)
+    quit()
+if args.action == "findphone":
+    findPhonePartial(args.mac)
+    quit()
+else:
+    print("Invalid Action please try running --help")
     quit()
