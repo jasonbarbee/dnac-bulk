@@ -7,13 +7,13 @@ Copyright TekLinks, Inc 2018
 
 Latest Version tested DNA 1.1.2
 
-# Setup Python
-Install Python 3 Libraries
+# Setup Python for DNAC-Bulk Tools
+Install Python 3 and Libraries
 ```
 pip3 install requests pyaml
 ```
 
-Setup your config.yml file
+Modify your config.yml file
 ```
 global:
   hostname: 'fqdn_of_DNAC'
@@ -22,6 +22,14 @@ global:
   defaultVoiceVN: '10_0_1_0-Phone_VN' (your default phone VN)
   VoiceVlans: ['101','102'] (this helps the script know what voice vlans are - must manually update till I use the spreadsheet field.)
 ```
+
+If you are using Netcopa for conversions, install Python 2.7 and it's requirements.txt file.
+on mac that is like this
+```
+cd netcopa
+pip2 install -r requirements.txt
+```
+
 ## Mapping Vlans to DNA Address Pools via Vlans.csv
 This is a format that worked for us, it stores some relevant data as we migrate.
 
