@@ -27,8 +27,8 @@ parser.add_argument("--switchname", "-n", help="set switchname")
 parser.add_argument("--vlanfile", "-v", help="set vlanfile")
 parser.add_argument("--stack", "-s", help="set stack number")
 parser.add_argument("--debug","-d",help="turn on debugs")
+parser.add_argument("--mac","-f",help="Find MAC address in the network")
 vlancsvfile = 'vlans.csv'
-config = "config.yml"
 
 # read arguments from the command line
 args = parser.parse_args()
@@ -37,7 +37,7 @@ args = parser.parse_args()
 # set variable scope for cfg
 cfg = ''
 cfgfile = ''
-with open(args.config,'r') as cfgfile:
+with open('config.yml','r') as cfgfile:
     cfg = yaml.load(cfgfile)
 
 dnacFQDN=cfg['global']['hostname']
@@ -48,7 +48,7 @@ VoiceVlans = cfg['global']['VoiceVlans']
 
 print("DNA Bulk Provisioning Tool. Version 1.0")
 print("Author: Jason Barbee with TekLinks, Inc")
-# print("Github Support URL: ")
+print("Github Support URL: https://github.com/jasonbarbee/dnac-bulk ")
 print('DNAC host:', dnacFQDN)
 print('Default Voice VN:',defaultVoiceVN)
 print('If you have Voice Vlans make sure to update config.yml. DNA will not allow access mode voice vlans.')
@@ -80,7 +80,6 @@ reqHeader = {'content-type': 'application/json'}
 
 
 def authDNAC():
-
     authURL = 'https://' + dnacFQDN + '/api/system/v1/identitymgmt/login'
     #auth to DNAC
     authResponse = s.get(authURL, auth=HTTPBasicAuth(username, password), verify=False)
@@ -208,6 +207,22 @@ def getTaskStatus(taskId):
             else:
                 return None
 
+def lookupHostMac(mac):
+    #query for the last 4 of a mac - expects a : in the middle aa:bb
+    LookupURL = 'https://' + dnacFQDN + '/api/v1/host?hostMac=' + mac
+    LookupResponse = s.get(LookupURL, verify=False, headers=reqHeader)
+    jsonLookup = LookupResponse.json()
+    if jsonLookup['response'] == []:
+        print("No results found")
+        quit()
+    if 'Bad Request' in jsonLookup['response'][0].keys():
+        if jsonLookup['response']['errorCode'] == 'Bad Request':
+            print("Error in Querying for MAC Address. Check Formating")
+            quit()
+    if args.debug:
+        print("DEBUG: Get Lookup MAC URL", LookupURL)
+        print("DEBUG: Get Host Lookup Response", LookupResponse)
+    return jsonLookup['response'][0]
 
 def importDNAC():
     #auth to DNAC and store global cookie variable
@@ -509,6 +524,15 @@ def convertConfigYML():
         print("Finished conversion")
     quit()
 
+def findHost(mac):
+    reqHeader['Cookie'] = authDNAC()['Cookie']
+    response = lookupHostMac(mac)
+    print("Host IP: ", response['hostIp'])
+    print("Host MAC:", response['hostMac'])
+    print("Switch Device IP:", response['connectedNetworkDeviceIpAddress'])
+    print("Switch Name:", response['connectedNetworkDeviceName'])
+    print("Switch Interface:", response['connectedInterfaceName'])
+    quit()
 # MAIN Program
 
 
@@ -529,4 +553,6 @@ if args.action == "clear":
     quit()
 if args.action == "vnexport":
     exportVNs()
+if args.action == "findhost":
+    findHost(args.mac)
     quit()

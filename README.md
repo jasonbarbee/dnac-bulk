@@ -14,6 +14,7 @@ Latest Version tested DNA 1.1.2
 * Merges 24 to 48 port switch port in the CSV for combining (2) 24 port switches to a 48.
 * Exports Virtual Networks and Address pools. 
 * Renames FastEthernet0/XX to GigabitEthernetX/0/XX based on the stack parameter passed.
+* Locates a MAC address system wide in DNA.
 
 # Setup Python for DNAC-Bulk Tools
 Install Python 3 and Libraries
@@ -67,6 +68,11 @@ Wipe switch so that it can be re-provisioned from CLI.
 
 ```
 python3 dnac-bulk.py --action clear --switchname switch.domain.com 
+```
+
+# Locate MAC address
+```
+python3 dnac-bulk.py --action findhost --mac 08:cc:a7:85:cb:5f
 ```
 
 # Conversion Step 1 - Prepare
