@@ -1,0 +1,2 @@
+﻿Switch Name,Interface,Address Pool(VN),Voice Pool(VN),Authentication
+CLOSETSWITCH_1.domain.loc,GigabitEthernet1/0/1,10_0_0_0-Corp_VN,10_0_1_0-Phone_VN,No Authentication

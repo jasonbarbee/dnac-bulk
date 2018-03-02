@@ -1,11 +1,13 @@
 # DNAC Bulk Provisioning script
-Authors : Jason Barbee, Jeremy Sanders
+Author: Jason Barbee
+
+Contributions by: Jeremy Sanders
 
 Copyright TekLinks, Inc 2018
 
 Latest Version tested DNA 1.1.2
 
-# Setup
+# Setup Python
 Install Python 3 Libraries
 ```
 pip3 install requests pyaml
@@ -20,12 +22,11 @@ global:
   defaultVoiceVN: '10_0_1_0-Phone_VN' (your default phone VN)
   VoiceVlans: ['101','102'] (this helps the script know what voice vlans are - must manually update till I use the spreadsheet field.)
 ```
-## Vlans.csv
+## Mapping Vlans to DNA Address Pools via Vlans.csv
 This is a format that worked for us, it stores some relevant data as we migrate.
 
-## Conversion Tooling Note
-You do NOT have to use my complicated NetCopa conversion process, you can just build a plain CSV in any way you wish and run the import. The conversion process helps us convert large batches of IOS config files.
-
+## Note about Netcopa conversions
+You do NOT have to use my NetCopa conversion process, you can just build a plain CSV in any way you wish and run the import. The process helps us convert large batches of IOS config files.
 
 # Import a DNA switch via CSV
 Have a CSV file ready through conversion(below) or manual building that looks like this
@@ -130,10 +131,10 @@ python3 dnac-bulk --stack 2 --input 212.yml --output 21.csv  --to48
 ```
 
 # Caveats
-* I never had to bulk 802.1x yet, so the YAML conversion does not look for that. The import process example is for no authentication, but you can change that to any of the expected values in DNA.
+* I never had to bulk 802.1x yet, we are using no authentication, so the netcopa does not reflect if the port used 802.1x or not. The import process example is for no authentication, but you can change that to any of the expected values in DNA.
 * This uses undocumented API calls to DNA, and may be volatile. I am documeting what I use it on. I had to reverse engineer the calls using Firefox Inspector on the DNA Web Interface.
-* I plan to support this for at least 6 months through a rollout of a few hundred switches. 
-* Support is best effort. Open a github issue. We have 300 switches or so left to go, so if you think it's useful, I might add it.
+* I plan to support this through a rollout of a few hundred switches probably till late 2018, we'll see where things are at that point. 
+* Open a github issue if you have one, or submit a pull request and I'll review it. We have 300 switches or so left to go, so if you think it's useful, I might add it.
 * Long term, once Cisco publishes a real DNA API, this tool may become obsolete.
 
 # Credits
