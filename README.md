@@ -1,11 +1,11 @@
 # DNAC Bulk Provisioning script
-Authors : Jason Barbee, Jeremy Sanders
-
+Author: Jason Barbee
+Contributions by: Jeremy Sanders
 Copyright TekLinks, Inc 2018
 
 Latest Version tested DNA 1.1.2
 
-# Setup
+# Setup Python
 Install Python 3 Libraries
 ```
 pip3 install requests pyaml
@@ -20,12 +20,11 @@ global:
   defaultVoiceVN: '10_0_1_0-Phone_VN' (your default phone VN)
   VoiceVlans: ['101','102'] (this helps the script know what voice vlans are - must manually update till I use the spreadsheet field.)
 ```
-## Vlans.csv
+## Mapping Vlans to DNA Address Pools via Vlans.csv
 This is a format that worked for us, it stores some relevant data as we migrate.
 
-## Conversion Tooling Note
-You do NOT have to use my complicated NetCopa conversion process, you can just build a plain CSV in any way you wish and run the import. The conversion process helps us convert large batches of IOS config files.
-
+## Note about Netcopa conversions
+You do NOT have to use my NetCopa conversion process, you can just build a plain CSV in any way you wish and run the import. The process helps us convert large batches of IOS config files.
 
 # Import a DNA switch via CSV
 Have a CSV file ready through conversion(below) or manual building that looks like this
