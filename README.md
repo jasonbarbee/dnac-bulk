@@ -153,6 +153,12 @@ python3 dnac-bulk --stack 2 --input 212.yml --output 21.csv  --to48
 * Open a github issue if you have one, or submit a pull request and I'll review it. We have 300 switches or so left to go, so if you think it's useful, I might add it.
 * Long term, once Cisco publishes a real DNA API, this tool may become obsolete.
 
+# TODO
+* Use filename as the import switchname instead of parameter.
+* Remove switch name from CSV.
+* Remove the voice vlan markings in config file and use CSV to understand voice vlans
+* Simplify CSV formatting.
+
 # Credits
 Netcopa Project
 https://github.com/cidrblock/netcopa
