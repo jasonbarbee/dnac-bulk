@@ -1,8 +1,7 @@
 # DNAC Bulk Provisioning script
 Author: Jason Barbee
-
 Contributions by: Jeremy Sanders
-
+Contributions by: Jeremy Sanders
 Copyright TekLinks, Inc 2018
 
 Latest Version tested DNA 1.1.2
