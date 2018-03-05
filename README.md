@@ -195,3 +195,7 @@ MIT License.
 TekLinks is a Cisco Gold Partner that offers professional services to support your DNA SD-Access design and installation.
 
 Visit www.teklinks.com and contact us to talk more.
+
+# Other Credits
+I reference the Netcopa Project in my process, but no code is copied or modified from that project.
+https://github.com/cidrblock/netcopa
