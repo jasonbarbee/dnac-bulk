@@ -341,23 +341,30 @@ def importDNAC():
     quit()
 
 def clearSwitch(switchName): 
+    # This function will clear all interfaces from a given switch.
     #add interface to master interface list
     switchUUID = getSwitchUUID(switchName)
     switchData = getDeviceInfo(switchUUID)
     switchIntList = getIntList(switchUUID)
+    # Copy the Switch JSON Data
     newSwitchData = switchData.copy()
+    # Clear the Interface Array.
     newSwitchData['deviceInterfaceInfo'] = [] 
+    # Initialize a variable to rebuild the interfaces.
     oldInterfaceList = []
     for item in switchIntList:
+        # Rebuild each interface into the array, but without details.
         oldInterface = {}
         oldInterface['idRef'] = item['id']
         oldInterfaceList.append(oldInterface)
-    # newSwitchData['deviceInterfaceInfo'] = oldInterfaceList
     newSwitchData['deviceInterfaceInfo'] = []
+    # The API requires us to push a higher instance Version variable for the object.
     newSwitchData['instanceVersion'] = newSwitchData['instanceVersion']+1
+    # Same for the Network Wide Instance Version, we bump that too.
     newSwitchData['networkWideSettings']['instanceVersion'] = newSwitchData['networkWideSettings']['instanceVersion']+1
-    # newSwitchData['resourceVersion'] = newSwitchData['resourceVersion']+1
+    # I think this was required also, to stamp the time.
     newSwitchData['lastUpdateTime'] = int(time.time())
+    # The Clear configuration did not seem to push this data in it's API call when I compared the web site frontend, so I mirrored it.
     del newSwitchData['customProvisions']
     del newSwitchData['configs']
     del newSwitchData['akcSettingsCfs']
@@ -437,7 +444,7 @@ def backupDNAC():
     quit()
 
 def exportVNs():
-    print("Exporting VNs")
+    print("Exporting VNs and IP Pools")
     vnListDict = {}
     poolListDict = {}
     with open(outputfile, "w") as ymlfile:
@@ -530,8 +537,10 @@ def convertConfigYML():
     quit()
 
 def findHost(mac):
+    # Takes a mac aa:bb:cc:dd:ee:ff and locates it in DNA
     print("Searching for Mac Address: ", mac)
     response = lookupHostMac(mac)
+    # This should be a singular response.
     print("Host IP: ", response['hostIp'])
     print("Host MAC:", response['hostMac'])
     print("Switch Device IP:", response['connectedNetworkDeviceIpAddress'])
@@ -540,6 +549,7 @@ def findHost(mac):
     quit()
 
 def findPhonePartial(mac):
+    # Takes a MAC and searches for a partial match. Strips : from the user input and the responses.
     print("Searching for Phone MAC Addresses ending with ", mac)
     response = getPhoneList()
     mac = mac.lower()
@@ -549,6 +559,7 @@ def findPhonePartial(mac):
         newmac = newmac.lower()
         newmac = re.sub(':','',newmac)
         if mac in newmac:
+            # We found the MAC, break out and print it.
             break
     if mac in newmac:
         print("Host IP: ", item['hostIp'])
