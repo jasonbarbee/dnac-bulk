@@ -84,7 +84,9 @@ Switch Name: switch.domain.loc
 Switch Interface: GigabitEthernet1/0/48
 ```
 
-# Search All IP_Phones in DNA by partial MAC
+# Search All IP Phones in DNA by partial MAC
+This step uses a DNA API Request to pull all endpoints DNA has categorized as IP_PHONE, and basically greps them for a match.
+
 ```
 python3 dnac-bulk.py --action findphone --mac cb5f
 ```
@@ -98,7 +100,7 @@ Switch Name: switch.domain.loc
 Switch Interface: GigabitEthernet1/0/48
 ```
 
-# Conversion Step 1 - Prepare
+# Conversion Step 1 - Prepare IOS Files
 Credit to netcopa project.
 This step will convert text IOS files into a YAML structure that this script will them process.
 1. Download Netcopa, and copy my file closet_ios.yml into the netcopa/host_vars folder.
@@ -115,7 +117,7 @@ os: cisco_ios
 vars:
 ```
 
-# Conversion Step 2 - Running netcopa
+# Conversion Step 2 - Running netcopa to parse to YML
 
 ``` bash
 python2.7 runparse.py
@@ -152,7 +154,7 @@ and
 ```
   Capture the output, and DIFF/Compare them if you need to.
 
-# Conversion - Step 2 - Convert the YML Configurations to DNAC import CSV.
+# Conversion - Step 3 - Import YML Configurations to DNAC import CSV.
 
 The script will stop when it finds a port hard coded to an access voice vlan. DNA will not let you assign a voice address pool into a data address (access vlan)
 They in a list in the config.yml file.
