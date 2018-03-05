@@ -74,10 +74,6 @@ else:
     outputfile = args.output
 
 
-switchName = args.switchname
-s = requests.Session()
-reqHeader = {'content-type': 'application/json'}
-
 
 def authDNAC():
     authURL = 'https://' + dnacFQDN + '/api/system/v1/identitymgmt/login'
@@ -86,7 +82,8 @@ def authDNAC():
     if authResponse.reason == 'Unauthorized':
         print("*** DNA Authentication Failed. Check config.yml for user/password issues.")
         quit()
-    return {'Cookie': authResponse.headers['set-cookie']}
+    else:
+       return authResponse.headers['set-cookie'] 
 
 def getNetUUID(netName):
     #query for IP/VN name mapping to UUID
@@ -243,8 +240,6 @@ def getPhoneList():
     return jsonLookup['response']
 
 def importDNAC():
-    #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("*** NOTE: This wipes all configuration and applies this to the switch")
     #init switch list
     switchList = []
@@ -346,8 +341,6 @@ def importDNAC():
     quit()
 
 def clearSwitch(switchName): 
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     #add interface to master interface list
     switchUUID = getSwitchUUID(switchName)
     switchData = getDeviceInfo(switchUUID)
@@ -396,8 +389,6 @@ def clearSwitch(switchName):
     quit()
 
 def exportDNAC(switchname):
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Exporting Config for ", switchname)
     # args.file = "export.csv"
     switchUUID = getSwitchUUID(switchname)
@@ -421,8 +412,6 @@ def exportDNAC(switchname):
     quit()
 
 def backupDNAC():
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Exporting All DNA Fabric for Default Fabric")
     jsonInventory = getSwitchList()
     with open(args.output, "w") as csvfile:
@@ -448,8 +437,6 @@ def backupDNAC():
     quit()
 
 def exportVNs():
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Exporting VNs")
     vnListDict = {}
     poolListDict = {}
@@ -543,7 +530,6 @@ def convertConfigYML():
     quit()
 
 def findHost(mac):
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Searching for Mac Address: ", mac)
     response = lookupHostMac(mac)
     print("Host IP: ", response['hostIp'])
@@ -554,7 +540,6 @@ def findHost(mac):
     quit()
 
 def findPhonePartial(mac):
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Searching for Phone MAC Addresses ending with ", mac)
     response = getPhoneList()
     mac = mac.lower()
@@ -576,7 +561,15 @@ def findPhonePartial(mac):
         print("No matches.")
         quit()
 # MAIN Program
-
+switchName = args.switchname
+# Create Requests Session for API calls
+s = requests.Session()
+# Define Header variable and scope
+reqHeader = {}
+#Setup JSON Header for Requests API calls
+reqHeader['content-type'] = 'application/json'
+# Authenticate to DNA and get a token key
+reqHeader['Cookie']  = authDNAC()
 
 if args.action == "import":
     importDNAC()
