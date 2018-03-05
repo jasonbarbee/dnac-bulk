@@ -74,11 +74,29 @@ python3 dnac-bulk.py --action clear --switchname switch.domain.com
 ```
 python3 dnac-bulk.py --action findhost --mac 08:cc:a7:85:cb:5f
 ```
+```
+-------
+Searching for Phone MAC Addresses ending with 08:cc:a7:85:cb:5f
+Host IP:  10.2.2.2
+Host MAC: 08:cc:a7:85:cb:5f
+Switch Device IP: 10.1.1.1
+Switch Name: switch.domain.loc
+Switch Interface: GigabitEthernet1/0/48
+```
+
 # Search All IP_Phones in DNA by partial MAC
 ```
 python3 dnac-bulk.py --action findphone --mac cb5f
 ```
-
+```
+-------
+Searching for Phone MAC Addresses ending with  cb5f
+Host IP:  10.2.2.2
+Host MAC: 08:cc:a7:85:cb:5f
+Switch Device IP: 10.1.1.1
+Switch Name: switch.domain.loc
+Switch Interface: GigabitEthernet1/0/48
+```
 
 # Conversion Step 1 - Prepare
 Credit to netcopa project.
