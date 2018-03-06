@@ -1,4 +1,4 @@
-# DNA Controller Bulk Provisioning script
+# Cisco DNA Controller SD-Access Bulk Provisioning
 Author: Jason Barbee - CCIE #18039
 
 Contributions by: Jeremy Sanders

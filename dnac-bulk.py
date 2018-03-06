@@ -74,10 +74,6 @@ else:
     outputfile = args.output
 
 
-switchName = args.switchname
-s = requests.Session()
-reqHeader = {'content-type': 'application/json'}
-
 
 def authDNAC():
     authURL = 'https://' + dnacFQDN + '/api/system/v1/identitymgmt/login'
@@ -86,7 +82,8 @@ def authDNAC():
     if authResponse.reason == 'Unauthorized':
         print("*** DNA Authentication Failed. Check config.yml for user/password issues.")
         quit()
-    return {'Cookie': authResponse.headers['set-cookie']}
+    else:
+       return authResponse.headers['set-cookie'] 
 
 def getNetUUID(netName):
     #query for IP/VN name mapping to UUID
@@ -243,8 +240,6 @@ def getPhoneList():
     return jsonLookup['response']
 
 def importDNAC():
-    #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("*** NOTE: This wipes all configuration and applies this to the switch")
     #init switch list
     switchList = []
@@ -346,25 +341,30 @@ def importDNAC():
     quit()
 
 def clearSwitch(switchName): 
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
+    # This function will clear all interfaces from a given switch.
     #add interface to master interface list
     switchUUID = getSwitchUUID(switchName)
     switchData = getDeviceInfo(switchUUID)
     switchIntList = getIntList(switchUUID)
+    # Copy the Switch JSON Data
     newSwitchData = switchData.copy()
+    # Clear the Interface Array.
     newSwitchData['deviceInterfaceInfo'] = [] 
+    # Initialize a variable to rebuild the interfaces.
     oldInterfaceList = []
     for item in switchIntList:
+        # Rebuild each interface into the array, but without details.
         oldInterface = {}
         oldInterface['idRef'] = item['id']
         oldInterfaceList.append(oldInterface)
-    # newSwitchData['deviceInterfaceInfo'] = oldInterfaceList
     newSwitchData['deviceInterfaceInfo'] = []
+    # The API requires us to push a higher instance Version variable for the object.
     newSwitchData['instanceVersion'] = newSwitchData['instanceVersion']+1
+    # Same for the Network Wide Instance Version, we bump that too.
     newSwitchData['networkWideSettings']['instanceVersion'] = newSwitchData['networkWideSettings']['instanceVersion']+1
-    # newSwitchData['resourceVersion'] = newSwitchData['resourceVersion']+1
+    # I think this was required also, to stamp the time.
     newSwitchData['lastUpdateTime'] = int(time.time())
+    # The Clear configuration did not seem to push this data in it's API call when I compared the web site frontend, so I mirrored it.
     del newSwitchData['customProvisions']
     del newSwitchData['configs']
     del newSwitchData['akcSettingsCfs']
@@ -396,8 +396,6 @@ def clearSwitch(switchName):
     quit()
 
 def exportDNAC(switchname):
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Exporting Config for ", switchname)
     # args.file = "export.csv"
     switchUUID = getSwitchUUID(switchname)
@@ -421,8 +419,6 @@ def exportDNAC(switchname):
     quit()
 
 def backupDNAC():
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
     print("Exporting All DNA Fabric for Default Fabric")
     jsonInventory = getSwitchList()
     with open(args.output, "w") as csvfile:
@@ -448,9 +444,7 @@ def backupDNAC():
     quit()
 
 def exportVNs():
-        #auth to DNAC and store global cookie variable
-    reqHeader['Cookie'] = authDNAC()['Cookie']
-    print("Exporting VNs")
+    print("Exporting VNs and IP Pools")
     vnListDict = {}
     poolListDict = {}
     with open(outputfile, "w") as ymlfile:
@@ -543,9 +537,10 @@ def convertConfigYML():
     quit()
 
 def findHost(mac):
-    reqHeader['Cookie'] = authDNAC()['Cookie']
+    # Takes a mac aa:bb:cc:dd:ee:ff and locates it in DNA
     print("Searching for Mac Address: ", mac)
     response = lookupHostMac(mac)
+    # This should be a singular response.
     print("Host IP: ", response['hostIp'])
     print("Host MAC:", response['hostMac'])
     print("Switch Device IP:", response['connectedNetworkDeviceIpAddress'])
@@ -554,7 +549,7 @@ def findHost(mac):
     quit()
 
 def findPhonePartial(mac):
-    reqHeader['Cookie'] = authDNAC()['Cookie']
+    # Takes a MAC and searches for a partial match. Strips : from the user input and the responses.
     print("Searching for Phone MAC Addresses ending with ", mac)
     response = getPhoneList()
     mac = mac.lower()
@@ -564,6 +559,7 @@ def findPhonePartial(mac):
         newmac = newmac.lower()
         newmac = re.sub(':','',newmac)
         if mac in newmac:
+            # We found the MAC, break out and print it.
             break
     if mac in newmac:
         print("Host IP: ", item['hostIp'])
@@ -576,7 +572,15 @@ def findPhonePartial(mac):
         print("No matches.")
         quit()
 # MAIN Program
-
+switchName = args.switchname
+# Create Requests Session for API calls
+s = requests.Session()
+# Define Header variable and scope
+reqHeader = {}
+#Setup JSON Header for Requests API calls
+reqHeader['content-type'] = 'application/json'
+# Authenticate to DNA and get a token key
+reqHeader['Cookie']  = authDNAC()
 
 if args.action == "import":
     importDNAC()
