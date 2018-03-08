@@ -1,4 +1,4 @@
-# Cisco DNA Controller SD-Access Bulk Provisioning
+# Cisco DNA Controller SD-Access Bulk Operations 
 Author: Jason Barbee - CCIE #18039
 
 Contributions by: Jeremy Sanders
@@ -15,6 +15,7 @@ Latest Version tested: DNA 1.1.2
 * Exports Virtual Networks and Address pools. 
 * Renames FastEthernet0/XX to GigabitEthernetX/0/XX based on the stack parameter passed.
 * Locates a MAC address or any partial mac system wide in DNA.
+* Prints Inventory and Provisioning Status of the system
 
 # Setup Python for DNAC-Bulk Tools
 Install Python 3 and Libraries
@@ -99,7 +100,15 @@ Switch Device IP: 10.1.1.1
 Switch Name: switch.domain.loc
 Switch Interface: GigabitEthernet1/0/48
 ```
+# Print Inventory Status from DNA
+```
+python3 dnac-bulk.py --action inventory
+```
 
+```
+Hostname                       Platform                 Uptime           Version          CollectionStatus       IP Address       Reachability     Status
+A-DNA-SWITCH                    C9500-40X          95 days, 3:01:50.69    16.6.3               Managed            10.1.1.1        Reachable        "SUCCESS"
+```
 # Conversion Step 1 - Prepare IOS Files
 Credit to netcopa project.
 This step will convert text IOS files into a YAML structure that this script will them process.

@@ -27,6 +27,7 @@ parser.add_argument("--switchname", "-n", help="set switchname")
 parser.add_argument("--vlanfile", "-v", help="set vlanfile")
 parser.add_argument("--stack", "-s", help="set stack number")
 parser.add_argument("--debug","-d",help="turn on debugs")
+parser.add_argument("--inventory","-inv", help="Print Switch Inventory IP and Status")
 parser.add_argument("--mac","-f",help="Find MAC address in the network")
 vlancsvfile = 'vlans.csv'
 
@@ -140,9 +141,12 @@ def getSwitchName(switchUUID):
 
 def getNetName(segmentUUID):
     #query for the VN name mapping to UUID
-    LookupURL = 'https://' + dnacFQDN + '/api/v2/data/customer-facing-service/segment?id=' + segmentUUID
+    LookupURL = 'https://' + dnacFQDN + '/api/v2/data/customer-facing-service/Segment?id=' + segmentUUID
     LookupResponse = s.get(LookupURL, verify=False, headers=reqHeader)
     jsonSwitchLookup = LookupResponse.json()
+    if args.debug:
+        print("DEBUG: Get NetName URL", LookupURL)
+        print("DEBUG: GetNetName Lookup Response", jsonSwitchLookup)
     return jsonSwitchLookup['response'][0]['name']
 
 def getDeviceInfo(switchUUID):
@@ -416,6 +420,7 @@ def exportDNAC(switchname):
             voiceNetName = getNetName(item['segment'][0]['idRef'])
             print(switchName, intName, authProfileName, dataNetName, voiceNetName)
             exportwriter.writerow([switchName, intName, dataNetName, voiceNetName, authProfileName])
+    print("Backup Complete")
     quit()
 
 def backupDNAC():
@@ -571,6 +576,24 @@ def findPhonePartial(mac):
     else:
         print("No matches.")
         quit()
+
+def printInventory():
+    switchList = getSwitchList()
+    print('{: <30}'.format("Hostname"), '{: <15}'.format("Platform"), '{: ^25}'.format("Uptime"), '{:10}'.format("Version"), '{: ^28}'.format("CollectionStatus"), '{:16}'.format("IP Address"), '{:16}'.format("Reachability"), '{:16}'.format("Status"))
+    for switch in switchList:
+        switchStatus = switch['inventoryStatusDetail']
+        status = re.search(r'''(".*")''', switchStatus).group(0)
+        print('{:30}'.format(switch['hostname']),
+        '{:15}'.format(switch['platformId'].split(',')[0]),
+        '{: ^25}'.format(switch['upTime']),
+        '{:10}'.format(switch['softwareVersion']),
+        '{: ^28}'.format(switch['collectionStatus']), 
+        '{:16}'.format(switch['managementIpAddress']),
+        '{:16}'.format(switch['reachabilityStatus']),
+        '{:16}'.format(status))
+        
+    quit()
+
 # MAIN Program
 switchName = args.switchname
 # Create Requests Session for API calls
@@ -604,6 +627,9 @@ if args.action == "findhost":
     quit()
 if args.action == "findphone":
     findPhonePartial(args.mac)
+    quit()
+if args.action == "inventory":
+    printInventory()
     quit()
 else:
     print("Invalid Action please try running --help")
