@@ -1,3 +1,2 @@
-Virtual Network,Classic VLAN,Name,SVI Location,SVI,Subnet,Helper,DNA Name,Fabric VLAN,Voice Vlan
-Corp_VN,10,LegacyDataNetwork,An Old Switch,10.0.0.1,255.255.255.0,none,10_0_0_0-Corp_VN,1001,
-Corp_VN,11,LegacyVoiceNetwork,An Old Switch,10.0.1.1,255.255.255.0,none,10_0_1_0-Corp_VN,1002,
+Virtual Network,Classic VLAN,Name,SVI Location,SVI,Subnet,Helper,DNA Name,Fabric VLAN
+jlksdfjlskdfjslkdfjsdlfjsdf TEST
