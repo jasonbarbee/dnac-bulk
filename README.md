@@ -109,7 +109,6 @@ python3 dnac-bulk.py --action inventory
 Hostname                       Platform                 Uptime           Version          CollectionStatus       IP Address       Reachability     Status
 A-DNA-SWITCH                    C9500-40X          95 days, 3:01:50.69    16.6.3               Managed            10.1.1.1        Reachable        "SUCCESS"
 ```
-
 # Conversion Step 1 - Prepare IOS Files
 Credit to netcopa project.
 This step will convert text IOS files into a YAML structure that this script will them process.
