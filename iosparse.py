@@ -6,7 +6,7 @@
 
 import re
 import sys
-#ADD
+
 pathin = sys.argv[1]
 file = open(pathin, "r")
 outputfile = "netcopa/completed_configurations/711-new.txt"
