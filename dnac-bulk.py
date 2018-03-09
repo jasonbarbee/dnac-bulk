@@ -130,6 +130,9 @@ def getSwitchUUID(switchName):
         print("DEBUG: Get Switch URL", switchLookupURL)
         print("DEBUG: Swtich Lookup Response", switchLookupResponse)
     jsonSwitchLookup = switchLookupResponse.json()
+    if len(jsonSwitchLookup['response']) == 0:
+        print("Switch Name " + switchName + " not found!")
+        quit()
     return jsonSwitchLookup['response'][0]['id']
 
 def getSwitchName(switchUUID):
@@ -415,9 +418,17 @@ def exportDNAC(switchname):
             switchName = getSwitchName(switchUUID)
             intId = item['interfaceId']
             intName = switchIntDict[intId]
-            authProfileName = item['authenticationProfile']['name']
-            dataNetName = getNetName(item['segment'][1]['idRef'])
-            voiceNetName = getNetName(item['segment'][0]['idRef'])
+            dataNetName = ''
+            voiceNetName = ''
+            if 'authenticationProfile' in item.keys():
+                authProfileName = item['authenticationProfile']['name']
+            else:
+                authProfileName = 'No Authentication'
+            if len(item['segment']) == 2:
+                dataNetName = getNetName(item['segment'][0]['idRef'])
+                voiceNetName = getNetName(item['segment'][1]['idRef'])
+            elif len(item['segment']) == 1:
+                dataNetName = getNetName(item['segment'][0]['idRef'])
             print(switchName, intName, authProfileName, dataNetName, voiceNetName)
             exportwriter.writerow([switchName, intName, dataNetName, voiceNetName, authProfileName])
     print("Backup Complete")
