@@ -14,85 +14,98 @@ path=args.incomingpath
 hostname = ""
 hostnameFinal = ""
 gigCount = ""
-collectLine = ""
 results=""
 
-
-def gethostname(hostline):
-        hostnameMatch = re.compile("hostname (.*)")
-        matchhostnameresult = hostnameMatch.search(hostline)
-        if matchhostnameresult:
-            hostname = hostnameMatch.search(line)
-            return hostname.group(1)
 
 def checkInts(interfacelinein, switchtype):
     results=""
     if switchtype == "gig":
-        checkgigint = re.search("(^interface G.*0/(?!49|50|51|52)[1-9][0-9]|^interface G.*0/[1-9]|^interface F.*0/[1-9][0-9]|^interface F*0/[1-9])",interfacelinein)
+        checkgigint = re.search("(^interface G.*0/(?!49|50|51|52)[1-9][0-9]|^interface G.*0/(?!49|50|51|52)[1-9]|^interface F.*0/(?!49|50|51|52)[1-9][0-9]|^interface F*0/(?!49|50|51|52)[1-9])",interfacelinein)
     else:
-        checkgigint = re.search("(^interface F.*.0/(?!49|50|51|52)[1-9][0-9]|^interface F.*.0/[1-9])",interfacelinein)
+        checkgigint = re.search("(^interface F.*.0/(?!49|50|51|52)[1-9][0-9]|^interface F.*.0/(?!49|50|51|52)[1-9])",interfacelinein)
     if checkgigint:
         results = "\n    "+checkgigint.group(0)+":\n      name: "+checkgigint.group()+"\n      switchport:\n"
-
-    checkaccessvlan = re.compile(".*.switchport access vlan (.*)")
-    if checkaccessvlan:
-        matchaccessresult = checkaccessvlan.search(interfacelinein)
-        if matchaccessresult:
-            results = "        access:\n          vlan: "+matchaccessresult.group(1)+"\n"
-
-    checkportmoderegex = re.compile(".*.switchport mode access")
-    if checkportmoderegex:
-        matchaccessresult = checkportmoderegex.search(interfacelinein)
-        if matchaccessresult:
-            results = "        mode:\n        - access"
-
-    checkvoicevlan = re.compile(".*switchport voice vlan (.*)")
-    if checkvoicevlan:
-        matchvoiceresult = checkvoicevlan.search(interfacelinein)
-        if matchvoiceresult:
-            results = "\n        voice:\n          vlan: "+matchvoiceresult.group(1)+"\n"
     if results:
         return results
     else:
         return ""
 
+for filename in glob.glob(os.path.join(path, '*')):
+    if filename.endswith((".cfg", ".txt")):
+        finalVlanOut=""
+        finalVVlanOut=""
+        accessVlans=[]
+        voiceVlans=[]
+        collectLine ="os: cisco_ios\nvars:\n"
+        fileOpen = open(filename,"r")
+        for line in fileOpen:
+            checkInt = re.search("(interface [GF].*.0/.*|interface [GF].*[1-5]/0/.*)",line)
+            checkFE = re.search("(interface F.*0/.*|interface F.*[1-5]/0/.*)",line)
+            checkAVlan = re.search(".*switchport access vlan (.*)",line)
+            checkMode = re.search(".*.switchport mode access",line)
+            checkVVlan = re.search(".*switchport voice vlan (.*)",line)
+            checkHName = re.search("hostname.* (.*)",line)
+            checkTrunk = re.search("interface GigabitEthernet0/(49|50|51|52)",line)
+            checkTrunkStack = re.search("interface GigabitEthernet1/0/(49|50|51|52)",line)
 
+            if checkTrunk:
+                break
 
-def switchread(switchtype, filepass):
-    collectLine ="os: cisco_ios\nvars:\n"
-    s = open(filepass, "r")
-    filename, file_extension = os.path.splitext(filepass)
-    
-    if switchtype == "gig":
-        for cfgLine in s:
-            checkHostName = re.search("hostname.* (.*)",cfgLine)
-            if checkHostName:
-                collectLine += "hostname: "+checkHostName.group(1)+"\n   interfaces:"
-            collectLine +=checkInts(cfgLine, switchtype)
+            if checkTrunkStack:
+                checkEndInt = re.search("interface GigabitEthernet2/0/.*",line)
+                while not checkEndInt:
+                    tempLine = fileOpen.readline
+                    if (tempLine == ""):
+                        break
 
-    if switchtype == "fe":
-        for cfgLine in s:
-            checkHostName = re.search("hostname.* (.*)",cfgLine)
-            if checkHostName:
-                collectLine += "hostname: "+checkHostName.group(1)+"\n   interfaces:"
-            collectLine +=checkInts(cfgLine, switchtype)
+            feSwitch = False
 
-    finalfile = os.path.dirname(os.path.realpath(__file__))+"/yml_cfgs/"
-    ymlfilname = os.path.basename(filename)
-    if not os.path.exists(os.path.dirname(finalfile)):
-        os.makedirs(finalfile)
-    with open(finalfile+ymlfilname+".yml", "w") as text_file:
-        text_file.write(collectLine)
-        print("File : "+finalfile+ymlfilname+".yml created!")
+            if checkHName:
+                collectLine += "hostname: "+checkHName.group(1)+"\n   interfaces:"
 
-for filename in glob.glob(os.path.join(path, '*.cfg')):
-    gigCount = 0
-    file = open(filename,"r")
-    for line in file:
-        checkInt = re.search("(Giga.*.0/.*|Giga*.[1-5]/0/.*)",line)
-        if checkInt:
-            gigCount = gigCount + 1
-    if gigCount < 24:
-        switchread("fe", filename)
+            if checkInt:
+                if checkFE:
+                    feSwitch = True
+
+                if feSwitch:
+                    collectLine +=checkInts(line, "fe")
+                else:
+                    collectLine +=checkInts(line, "gig")
+            
+            if checkAVlan:
+                collectLine +="        access:\n          vlan: "+checkAVlan.group(1)+"\n"
+                if checkAVlan.group(1) not in accessVlans:
+                    accessVlans.append(checkAVlan.group(1))
+            if checkMode:
+                collectLine +="        mode:\n        - access"
+
+            if checkVVlan:
+                collectLine +="\n        voice:\n          vlan: "+checkVVlan.group(1)+"\n"
+                if checkVVlan.group(1) not in voiceVlans:
+                    voiceVlans.append(checkVVlan.group(1))
+        
+        filename_base, file_extension = os.path.splitext(filename)
+        finalfile = os.path.dirname(os.path.realpath(__file__))+"/yml_cfgs/"
+        ymlfilname = os.path.basename(filename_base)
+        if not os.path.exists(os.path.dirname(finalfile)):
+            os.makedirs(finalfile)
+        with open(finalfile+ymlfilname+".yml", "w") as text_file:
+            text_file.write(collectLine)
+            print("File : "+finalfile+ymlfilname+".yml created!")
+            i=0
+            while i < len(accessVlans):
+                finalVlanOut += accessVlans[i]+","
+                i += 1
+            print("Access Vlans: "+finalVlanOut.rstrip(','))
+            i=0
+            if (voiceVlans):
+                while i < len(voiceVlans):
+                    finalVVlanOut += voiceVlans[i]+","
+                    i += 1
+                print("Voice Vlans: "+finalVVlanOut.rstrip(','))
+        print("\n")
+            
+            
+
     else:
-        switchread("gig", filename)
+        print("Please ensure configs are txt or cfg extension!")
