@@ -3,132 +3,96 @@
 import re
 import sys
 import os
+import glob
+from argparse import ArgumentParser
+import ntpath
 
-inread = os.path.abspath(sys.argv[1])
-
-pathin = open(inread, "r")
-file = pathin
-outputfile = "testout.txt"
-switch = file
-gigCount = 0
+parser = ArgumentParser()
+parser.add_argument("-p", "--path", dest="incomingpath", help="Open specified path for cfg files")
+args = parser.parse_args()
+path=args.incomingpath
 hostname = ""
 hostnameFinal = ""
-
-#exportwriter = csv.writer(csvfile, delimiter=',')
-#exportwriter.writerow(['Switch Name', 'Interface', 'Address Pool(VN)', 'Voice Pool(VN)', 'Authentication'])
-
-def switchread(switchtype):
-    if switchtype == "gig":
-        
-        pathin.seek(0)
-        s = file
-        
-        with open(outputfile, 'a') as csvfile:
-            # switch.close()
-            # filehere = open(pathin, "r")
-            print("os: cisco_ios\nvars:\n   hostname: "+hostnameFinal+"\n   interfaces:")
-            for gigLine in s:
-                checkgigint = re.compile("(Gi.*0/[1-9][0-9]|Gi.*0/[1-9]|Fa.*0/[1-9][0-9]|Fa*0/[1-9])")
-                if checkgigint:
-                    matchgigresult = checkgigint.search(gigLine)
-                    if matchgigresult:
-                        print("    ",matchgigresult.group(0),":\n      name: "+matchgigresult.group(0), "\n      switchport:")
-
-                checkaccessvlan = re.compile("switchport access vlan (.*)")
-                if checkaccessvlan:
-                    matchaccessresult = checkaccessvlan.search(gigLine)
-                    if matchaccessresult:
-                        # print("Here: "+matchgigresult.group(0))
-                        print("        access:\n          vlan: "+matchaccessresult.group(1))
-
-                checkportmoderegex = re.compile("switchport mode access")
-                if checkportmoderegex:
-                    matchaccessresult = checkportmoderegex.search(gigLine)
-                    if matchaccessresult:
-                        # print("Here: "+matchgigresult.group(0))
-                        print("        mode:\n        - access")
-
-                checkvoicevlan = re.compile("switchport voice vlan (.*)")
-                if checkvoicevlan:
-                    matchvoiceresult = checkvoicevlan.search(gigLine)
-                    if matchvoiceresult:
-                        # print("Here: "+matchgigresult.group(0))
-                        print("        voice:\n          vlan: "+matchvoiceresult.group(1))
-
-    if switchtype == "fe":
-        with open(outputfile, 'a') as csvfile:
-            # exportwriter = csv.writer(csvfile, delimiter=',')
-            # exportwriter.writerow(['Switch Name', 'Interface', 'Address Pool(VN)', 'Voice Pool(VN)', 'Authentication'])
-            #switch.close()
-            pathin.seek(0)
-            s = file
-            #filehere = open(pathin, "r")
-            #s = filehere
-            print("os: cisco_ios\nvars:\n   hostname: "+hostnameFinal+"\n   interfaces:")
-            for gigLine in s:
-                checkgigint = re.compile("(Fa.*0/[1-9][0-9]|Fa.*0/[1-9])")
-                if checkgigint:
-                    matchgigresult = checkgigint.search(gigLine)
-                    if matchgigresult:
-
-                        print("    "+matchgigresult.group(0)+":\n      name: "+matchgigresult.group(0),
-                              "\n      switchport:")
-
-                checkaccessvlan = re.compile("switchport access vlan (.*)")
-                if checkaccessvlan:
-                    matchaccessresult = checkaccessvlan.search(gigLine)
-                    if matchaccessresult:
-                        # print("Here: "+matchgigresult.group(0))
-                        print("        access:\n          vlan: "+matchaccessresult.group(1))
-
-                checkportmoderegex = re.compile("switchport mode access")
-                if checkportmoderegex:
-                    matchaccessresult = checkportmoderegex.search(gigLine)
-                    if matchaccessresult:
-                        # print("Here: "+matchgigresult.group(0))
-                        print("        mode:\n        - access")
-
-                checkvoicevlan = re.compile("switchport voice vlan (.*)")
-                if checkvoicevlan:
-                    matchvoiceresult = checkvoicevlan.search(gigLine)
-                    if matchvoiceresult:
-                        # print("Here: "+matchgigresult.group(0))
-                        print("        voice:\n          vlan: "+matchvoiceresult.group(1))
-
-                checkbadint = re.compile("interface GigabitEthernet0*")
-                if checkbadint:
-                    matchedbadresult = checkbadint.search(gigLine)
-                    if matchedbadresult:
-                        break
+gigCount = ""
+collectLine = ""
+results=""
 
 
-                    #exportwriter.writerow([hostnameFinal, matchgigresult.group(0), "1"+"1"+"1"])
-
-for line in switch:
-    checkHostName = re.compile("hostname\s*")
-    if checkHostName:
+def gethostname(hostline):
         hostnameMatch = re.compile("hostname (.*)")
-        matchhostnameresult = hostnameMatch.search(line)
+        matchhostnameresult = hostnameMatch.search(hostline)
         if matchhostnameresult:
             hostname = hostnameMatch.search(line)
-            hostnameFinal = hostname.group(1)
+            return hostname.group(1)
 
-    checkInt = re.compile("(Giga.*.0/.*|Giga*.[1-5]/0/.*)")
-    if checkInt:
-        matchResult = checkInt.search(line)
-        if matchResult:
+def checkInts(interfacelinein, switchtype):
+    results=""
+    if switchtype == "gig":
+        checkgigint = re.search("(^interface G.*0/(?!49|50|51|52)[1-9][0-9]|^interface G.*0/[1-9]|^interface F.*0/[1-9][0-9]|^interface F*0/[1-9])",interfacelinein)
+    else:
+        checkgigint = re.search("(^interface F.*.0/(?!49|50|51|52)[1-9][0-9]|^interface F.*.0/[1-9])",interfacelinein)
+    if checkgigint:
+        results = "\n    "+checkgigint.group(0)+":\n      name: "+checkgigint.group()+"\n      switchport:\n"
+
+    checkaccessvlan = re.compile(".*.switchport access vlan (.*)")
+    if checkaccessvlan:
+        matchaccessresult = checkaccessvlan.search(interfacelinein)
+        if matchaccessresult:
+            results = "        access:\n          vlan: "+matchaccessresult.group(1)+"\n"
+
+    checkportmoderegex = re.compile(".*.switchport mode access")
+    if checkportmoderegex:
+        matchaccessresult = checkportmoderegex.search(interfacelinein)
+        if matchaccessresult:
+            results = "        mode:\n        - access"
+
+    checkvoicevlan = re.compile(".*switchport voice vlan (.*)")
+    if checkvoicevlan:
+        matchvoiceresult = checkvoicevlan.search(interfacelinein)
+        if matchvoiceresult:
+            results = "\n        voice:\n          vlan: "+matchvoiceresult.group(1)+"\n"
+    if results:
+        return results
+    else:
+        return ""
+
+
+
+def switchread(switchtype, filepass):
+    collectLine ="os: cisco_ios\nvars:\n"
+    s = open(filepass, "r")
+    filename, file_extension = os.path.splitext(filepass)
+    
+    if switchtype == "gig":
+        for cfgLine in s:
+            checkHostName = re.search("hostname.* (.*)",cfgLine)
+            if checkHostName:
+                collectLine += "hostname: "+checkHostName.group(1)+"\n   interfaces:"
+            collectLine +=checkInts(cfgLine, switchtype)
+
+    if switchtype == "fe":
+        for cfgLine in s:
+            checkHostName = re.search("hostname.* (.*)",cfgLine)
+            if checkHostName:
+                collectLine += "hostname: "+checkHostName.group(1)+"\n   interfaces:"
+            collectLine +=checkInts(cfgLine, switchtype)
+
+    finalfile = os.path.dirname(os.path.realpath(__file__))+"/yml_cfgs/"
+    ymlfilname = os.path.basename(filename)
+    if not os.path.exists(os.path.dirname(finalfile)):
+        os.makedirs(finalfile)
+    with open(finalfile+ymlfilname+".yml", "w") as text_file:
+        text_file.write(collectLine)
+        print("File : "+finalfile+ymlfilname+".yml created!")
+
+for filename in glob.glob(os.path.join(path, '*.cfg')):
+    gigCount = 0
+    file = open(filename,"r")
+    for line in file:
+        checkInt = re.search("(Giga.*.0/.*|Giga*.[1-5]/0/.*)",line)
+        if checkInt:
             gigCount = gigCount + 1
-
-#print(gigCount)
-if gigCount < 24:
-    switchread("fe")
-else:
-    switchread("gig")
-
-
-
-#print(gigCount)
-# if gigCount <=4:
-#     feSwitch()
-# else:
-#     gigSwitch()
+    if gigCount < 24:
+        switchread("fe", filename)
+    else:
+        switchread("gig", filename)
