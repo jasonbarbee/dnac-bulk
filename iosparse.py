@@ -1,5 +1,3 @@
-#validate that voice =/= data
-
 import re
 import sys
 import os
@@ -90,6 +88,7 @@ for filename in glob.glob(os.path.join(path, '*')):
         if not os.path.exists(os.path.dirname(finalfile)):
             os.makedirs(finalfile)
         with open(finalfile+ymlfilname+".yml", "w") as text_file:
+            nowantVlans=""
             text_file.write(collectLine)
             print("File : "+finalfile+ymlfilname+".yml created!")
             i=0
@@ -101,8 +100,15 @@ for filename in glob.glob(os.path.join(path, '*')):
             if (voiceVlans):
                 while i < len(voiceVlans):
                     finalVVlanOut += voiceVlans[i]+","
+                    found = voiceVlans[i] in accessVlans
+                    if found:
+                        nowantVlans+=voiceVlans[i]+","
                     i += 1
-                print("Voice Vlans: "+finalVVlanOut.rstrip(','))
+                if nowantVlans:
+                    print("Voice Vlans: "+finalVVlanOut.rstrip(','))
+                    print("****Voice Vlans Found In Data Vlans: "+nowantVlans.rstrip(',')+" ****")
+
+            
         print("\n")
             
             
