@@ -6,3 +6,4 @@ global:
   defaultVoiceVN: '10_0_0_0-Phone_VN'
   VoiceVlans: ['100','101']
   securecrt_username: 'admin'
+  securecrt_rootfolder: 'DNA'
