@@ -5,3 +5,4 @@ global:
   # Use this to assign ports a default phone address pool if they don't have one.
   defaultVoiceVN: '10_0_0_0-Phone_VN'
   VoiceVlans: ['100','101']
+  securecrt_username: 'admin'

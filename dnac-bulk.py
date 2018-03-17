@@ -28,6 +28,7 @@ parser.add_argument("--vlanfile", "-v", help="set vlanfile")
 parser.add_argument("--stack", "-s", help="set stack number")
 parser.add_argument("--debug","-d",help="turn on debugs")
 parser.add_argument("--inventory","-inv", help="Print Switch Inventory IP and Status")
+parser.add_argument("--securecrt","",help="Print out Secure CRT file of the database")
 parser.add_argument("--mac","-f",help="Find MAC address in the network")
 vlancsvfile = 'vlans.csv'
 
@@ -602,9 +603,17 @@ def printInventory():
         '{:16}'.format(switch['managementIpAddress']),
         '{:16}'.format(switch['reachabilityStatus']),
         '{:16}'.format(status))
-        
     quit()
 
+def buildSecureCRTFile():
+    switchList = getSwitchList()
+    with open("securecrt.csv",'a') as csvfile:
+        exportwriter = csv.writer(csvfile, delimiter=',')
+        exportwriter.writerow(['hostname','protocol','username','folder','emulation'])
+        for switch in swtichList:
+            exportwriter.writerow(switch['hostname'],,'SSH',cfg_securecrt_username, switch['managementIpAddress'])
+         
+    quit()
 # MAIN Program
 switchName = args.switchname
 # Create Requests Session for API calls
@@ -641,6 +650,9 @@ if args.action == "findphone":
     quit()
 if args.action == "inventory":
     printInventory()
+    quit()
+if args.action == "securecrt":
+    buildSecureCRTFile()
     quit()
 else:
     print("Invalid Action please try running --help")
