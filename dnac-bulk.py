@@ -14,11 +14,12 @@ import urllib3
 import argparse
 import re
 import os
+import glob
 from requests.auth import HTTPBasicAuth
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--action", "-a", help="set action - import, backup, export, convert, findhost, findphone, vnexport or clear")
+parser.add_argument("--action", "-a", help="set action - import, backup, export, parse, convert, findhost, findphone, vnexport or clear")
 parser.add_argument("--input", "-i", help="set input file")
 parser.add_argument("--to48","-t", help="Convert 24 port to 48 port")
 parser.add_argument("--output", "-o", help="set output file")
@@ -28,8 +29,9 @@ parser.add_argument("--vlanfile", "-v", help="set vlanfile")
 parser.add_argument("--stack", "-s", help="set stack number")
 parser.add_argument("--debug","-d",help="turn on debugs")
 parser.add_argument("--inventory","-inv", help="Print Switch Inventory IP and Status")
-parser.add_argument("--securecrt","",help="Print out Secure CRT file of the database")
+parser.add_argument("--securecrt","-crt",help="Print out Secure CRT file of the database")
 parser.add_argument("--mac","-f",help="Find MAC address in the network")
+parser.add_argument("--inpath", "--path", dest="incomingpath", help="Open specified path for cfg files")
 vlancsvfile = 'vlans.csv'
 
 # read arguments from the command line
@@ -47,6 +49,9 @@ username = cfg['global']['username']
 password = cfg['global']['password']
 defaultVoiceVN = cfg['global']['defaultVoiceVN']
 VoiceVlans = cfg['global']['VoiceVlans']
+securecrt_username = cfg['global']['securecrt_username']
+securecrt_rootfolder = cfg['global']['securecrt_rootfolder']
+
 
 print("DNA Bulk Provisioning Tool. Version 1.0")
 print("Author: Jason Barbee with TekLinks, Inc")
@@ -102,6 +107,24 @@ def getNetUUID(netName):
         return 'NOT-FOUND'
     else:
         return jsonNetName['response'][0]['id']
+
+def getSwitchLocation(switchName):
+    switchUUID = getSwitchUUID(switchName)
+    LookupURL = 'https://' + dnacFQDN + '/api/v1/member/group?groupType=SITE&id=' + switchUUID
+    Response = s.get(LookupURL, verify=False, headers=reqHeader)
+    json=Response.json()
+    if args.debug:
+        print("DEBUG: API URL", LookupURL)
+        print("DEBUG: API Switch Site Response", Response)
+    if json['response'] == []:
+        print("**** FATAL ERROR ****")
+        print("Switch Location Not Found - check the name of the Switch : " + switchName)
+        quit()
+    else:
+        if json['response'][switchUUID] == [{}]:
+            return []
+        else:
+            return json['response'][switchUUID]
 
 def getIntList(switchUUID):
     #query for the interfame name mapping to UUID
@@ -553,6 +576,148 @@ def convertConfigYML():
         print("Finished conversion")
     quit()
 
+# IOS Parser
+def checkInts(interfacelinein, switchtype):
+    #take in line to examine, switch type, compare and extract interfaces numbers
+    results=""
+    if switchtype == "gig":
+        checkgigint = re.search("(G.*0/(?!49|50|51|52)[1-9][0-9]|G.*0/(?!49|50|51|52)[1-9]|F.*0/(?!49|50|51|52)[1-9][0-9]|F*0/(?!49|50|51|52)[1-9])",interfacelinein)
+    else:
+        checkgigint = re.search("(F.*.0/(?!49|50|51|52)[1-9][0-9]|F.*.0/(?!49|50|51|52)[1-9])",interfacelinein)
+    if checkgigint:
+        results = "\n    "+checkgigint.group(0)+":\n      name: "+checkgigint.group()+"\n      switchport:\n"
+    if results:
+        return results
+    else:
+        return ""
+
+def buildYML(path):
+    #Step 1 in the Conversion - take a directory of config files, and convert them to YML.
+    hostname = ""
+    hostnameFinal = ""
+    gigCount = ""
+    results=""
+    intCount = 0
+    lastIntName = ''
+    skipInt = False
+    for filename in glob.glob(os.path.join(path, '*')):
+        if filename.endswith((".cfg", ".txt")):
+            finalVlanOut=""
+            finalVVlanOut=""
+            accessVlans=[]
+            voiceVlans=[]
+            collectLine ="os: cisco_ios\nvars:\n"
+            fileOpen = open(filename,"r")
+            currentIntName = ''
+            for line in fileOpen:
+                #Declare checks for which lines we'd like to capture
+                # checkInt matches the config part if show commands are in the file.
+                checkInt = re.search("(interface [GF].*.0/.*|interface [GF].*[1-5]/0/.*)",line)
+                checkFE = re.search("(F.*0/.*|F.*[1-5]/0/.*)",line)
+                checkAVlan = re.search(".*switchport access vlan (.*)",line)
+                checkMode = re.search(".*.switchport mode access",line)
+                checkModeTrunk = re.search(".*.switchport mode trunk",line)
+                checkVVlan = re.search(".*switchport voice vlan (.*)",line)
+                checkHName = re.search("hostname.* (.*)",line)
+                checkTrunk = re.search("G.*.0/(49|50|51|52)|G.*.1/[1-8]|Port-channel*",line)
+                checkTrunkStack = re.search("G.*.[1-5]/0/(49|50|51|52)",line)
+                #Preset FastEthernet switch flag
+                feSwitch = False
+                #Check for hostname
+                if checkHName:
+                    collectLine += "   hostname: "+checkHName.group(1)+"\n   interfaces:"
+                #Is this a trunk port?  No want....
+                if checkInt:
+                    # We found a new interface, it's time to process it.
+                    skipInt = False 
+                # If this flag is set, no need to process anything further.
+                if skipInt:
+                    # Skip lines until we find the next interface.
+                    continue
+                else:
+                    if checkTrunk:
+                        # Skip high 49-52 ports, port channels or Gig1/1/1-8 type ports.
+                        skipInt = True
+                        continue
+                    if checkInt:
+                        skipInt = False
+                        if checkFE:
+                            feSwitch = True
+                        #Process interfaces based on switch type
+                        if feSwitch:
+                            currentIntName = line
+                            collectLine += checkInts(line, "fe")
+                        else:
+                            currentIntName = line
+                            collectLine += checkInts(line, "gig")
+                        intCount = intCount + 1
+                    if checkModeTrunk:
+                        # It's not an expected uplink. Report the port and quit.
+                        print(currentIntName + ": unsupported trunk port. Change to valid access and try again. Skipping Interface")
+                        skipInt = True
+                                #Check access vlan
+                    if checkAVlan:
+                        collectLine +="        access:\n          vlan: "+checkAVlan.group(1)+"\n"
+                        if checkAVlan.group(1) not in accessVlans:
+                            accessVlans.append(checkAVlan.group(1))
+                    #Check access mode
+                    if checkMode: #or accessOR:
+                        collectLine +="        mode:\n        - access"
+                    #Check voice vlan
+                    if checkVVlan:
+                        collectLine +="\n        voice:\n          vlan: "+checkVVlan.group(1)+"\n"
+                        if checkVVlan.group(1) not in voiceVlans:
+                            voiceVlans.append(checkVVlan.group(1))
+                    # Reset the pointer to the last good interface
+                lastIntName = currentIntName
+                #Is this a trunk port on a stack?  Keep reading until we get to next stack!
+                if checkTrunkStack:
+                    checkEndInt = re.search("(GigabitEthernet2/0/.*|FastEthernet2/0/.*)",line)
+                    # do we need to add more stacks here?
+                    while not checkEndInt:
+                        tempLine = fileOpen.readline
+                        if (tempLine == ""):
+                            break
+
+            #build file output name based on existing config name
+            filename_base, file_extension = os.path.splitext(filename)
+            finalfile = os.path.dirname(os.path.realpath(__file__))+"/yml_cfgs/"
+            ymlfilname = os.path.basename(filename_base)
+            #if directory doesn't exist, create it
+            if not os.path.exists(os.path.dirname(finalfile)):
+                os.makedirs(finalfile)
+            #open file for write out
+            with open(finalfile+ymlfilname+".yml", "w") as text_file:
+                nowantVlans=""
+                text_file.write(collectLine)
+                print("File : yml_cfgs/"+ymlfilname+".yml created!")
+                print(str(intCount) + " interfaces found ")
+                #output access vlans
+                i=0
+                while i < len(accessVlans):
+                    finalVlanOut += accessVlans[i]+","
+                    i += 1
+                print("Access Vlans: "+finalVlanOut.rstrip(','))
+                #output voice vlans
+                i=0
+                if (voiceVlans):
+                    while i < len(voiceVlans):
+                        finalVVlanOut += voiceVlans[i]+","
+                        found = voiceVlans[i] in accessVlans
+                        if found:
+                            nowantVlans+=voiceVlans[i]+","
+                        i += 1
+                    #check for duplicate voice/data vlans
+                    # this might not be necessary...
+                    if nowantVlans:
+                        print("Voice Vlans: "+finalVVlanOut.rstrip(','))
+                        print("****Voice Vlans Found In Data Vlans: "+nowantVlans.rstrip(',')+" ****")
+            print("\n")
+        else:
+            print("Please ensure configs are txt or cfg extension!")
+#IOS Parser
+
+
 def findHost(mac):
     # Takes a mac aa:bb:cc:dd:ee:ff and locates it in DNA
     print("Searching for Mac Address: ", mac)
@@ -607,12 +772,25 @@ def printInventory():
 
 def buildSecureCRTFile():
     switchList = getSwitchList()
-    with open("securecrt.csv",'a') as csvfile:
+    with open("securecrt.csv",'w') as csvfile:
         exportwriter = csv.writer(csvfile, delimiter=',')
-        exportwriter.writerow(['hostname','protocol','username','folder','emulation'])
-        for switch in swtichList:
-            exportwriter.writerow(switch['hostname'],,'SSH',cfg_securecrt_username, switch['managementIpAddress'])
-         
+        exportwriter.writerow(['session_name', 'hostname','protocol','username','folder','emulation'])
+        for switch in switchList:
+            if switch['role'] == 'DISTRIBUTION':
+                prefix = '9500s'
+            elif switch['role'] == 'ACCESS':
+                prefix = '9300s'
+            locationName = getSwitchLocation(switch['hostname'])
+            slash = '/'
+            if locationName == []:
+                locationName = 'Unassigned'
+            else:
+                locationName = locationName[0]['name']
+            folder = securecrt_rootfolder + slash + locationName + slash + prefix
+            print("Exporting " + switch['hostname'])
+            exportwriter.writerow([switch['hostname'], switch['managementIpAddress'], 'SSH2', securecrt_username, folder, 'XTerm'])
+    print("Export to SecureCRT Complete")
+        
     quit()
 # MAIN Program
 switchName = args.switchname
@@ -636,6 +814,13 @@ if args.action == "backup":
     quit()
 if args.action == "convert":
     convertConfigYML()
+    quit()
+if args.action == "parse":
+    buildYML(args.incomingpath)
+    quit()
+if args.action == "migate":
+    buildYML(args.incomingpath)
+    convertConfigYML(args.incomingpath)
     quit()
 if args.action == "clear":
     clearSwitch(args.switchname)
