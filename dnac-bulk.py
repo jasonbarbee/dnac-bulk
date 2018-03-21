@@ -70,8 +70,11 @@ if args.stack is None:
 else:
     stack = args.stack
 if args.input is None:
-    if args.action in ['import','convert']:
+    if args.action in ['convert','parse','migrate']:
         print("Please Provide an input file with --input (filename.csv)")
+    if args.action in ['convert','parse','migrate']:
+       if args.incomingpath is None:
+            print("Please Provide an input path with --inpath") 
 else:
     inputfile = args.input
 if args.output is None:
@@ -79,8 +82,6 @@ if args.output is None:
         print("Assuming output file of export.csv, you can override with --output")
 else:
     outputfile = args.output
-
-
 
 def authDNAC():
     authURL = 'https://' + dnacFQDN + '/api/system/v1/identitymgmt/login'
@@ -500,80 +501,111 @@ def exportVNs():
         yaml.dump(ymldata, ymlfile, default_flow_style=False)
     quit()
 
-def convertConfigYML(): 
-    count = 0
-    # read arguments from the command line
-    with open(inputfile,'r') as cfgfile:
-            cfg = yaml.load(cfgfile)
-    with open(outputfile,'a') as csvfile:
-        exportwriter = csv.writer(csvfile, delimiter=',')
-        if (stack == '1'):
-            exportwriter.writerow(['Switch Name', 'Interface', 'Address Pool(VN)', 'Voice Pool(VN)', 'Authentication'])
-        interfaces = cfg['vars']['interfaces']
-        hostname = cfg['vars']['hostname'] 
-        print("Hostname: ", cfg['vars']['hostname'])
-        for item in interfaces:
-            mode = ''
-            accessvlan = ''
-            voicevlan = ''
-            newint = ''
-            dnaVNaccess = ''
-            dnaVNvoice = ''
-            oldint = interfaces[item]['name']
-            # We don't want port channels, management, or vlans, or Gig1 uplink ports. 
-            if 'Port-channel' not in oldint:
-                if 'FastEthernet0' != oldint:
-                    if 'Vlan' not in oldint:
-                        if 'GigabitEthernet1' not in oldint:
-                            if 'channel_group' in interfaces[item].keys():
-                                print('Skipping Port Channel interface ' + oldint)
-                            else:
-                                count = count + 1
-                                if 'mode' in interfaces[item]['switchport'].keys():
-                                    mode = interfaces[item]['switchport']['mode'][0]
+def convertConfigYML(inpath,outpath):
+    for filename in glob.glob(os.path.join(outpath, '*.csv')):
+        # Clean up all files in the output folder.
+        os.remove(filename)
+    for filename in glob.glob(os.path.join(inpath, '*.yml')):
+        # read each filename and conver it one by one.
+        with open(filename,'r') as cfgfile:
+                cfg = yaml.load(cfgfile)
+        #build file output name based on existing config name
+        filename_base, file_extension = os.path.splitext(filename)
+        # Normalize the original filename with the stack key in it.
+        filename_base = filename_base.replace("-","_")
+        # Grab the stack number from the last _ in the filename
+        stack = int(filename_base.split("_").pop())
+        newpath = os.path.dirname(os.path.realpath(__file__))+"/"+outpath
+        ymlfilename = os.path.basename(filename_base)
+        # ymlfilename = ymlfilename.replace("-","_")
+        ymlfilename = ymlfilename.split("_")
+        # drop the _stack from the filename
+        ymlfilename = ymlfilename[:-1]
+        # Join yml back together with a _
+        ymlfilename = "_".join(ymlfilename)
+
+        # if directory doesn't exist, create it
+        # if not os.path.exists(os.path.dirname(newpath)):
+        #     os.makedirs(newpath)
+        # if stack > 1:
+            # Append stacks together
+            # mode = 'a'
+        # else:
+            # Overwrite, remove the old file in case this is a re-run.
+            # mode = 'w'
+            # # Remove the old file.
+            # if os.path.exists(newpath+ymlfilename+".csv"):
+            #     os.remove(newpath+ymlfilename+".csv")
+        with open(newpath+"/"+ymlfilename+".csv",'a') as csvfile:
+            count = 0
+            exportwriter = csv.writer(csvfile, delimiter=',')
+            if (stack == 1):
+                exportwriter.writerow(['Switch Name', 'Interface', 'Address Pool(VN)', 'Voice Pool(VN)', 'Authentication'])
+            interfaces = cfg['vars']['interfaces']
+            hostname = cfg['vars']['hostname'] 
+            print("Hostname: ", cfg['vars']['hostname'])
+            for item in interfaces:
+                mode = ''
+                accessvlan = ''
+                voicevlan = ''
+                newint = ''
+                dnaVNaccess = ''
+                dnaVNvoice = ''
+                oldint = interfaces[item]['name']
+                # We don't want port channels, management, or vlans, or Gig1 uplink ports. 
+                if 'Port-channel' not in oldint:
+                    if 'FastEthernet0' != oldint:
+                        if 'Vlan' not in oldint:
+                            if 'GigabitEthernet1' not in oldint:
+                                if 'channel_group' in interfaces[item].keys():
+                                    print('Skipping Port Channel interface ' + oldint)
                                 else:
-                                    mode = 'trunk'
-                                # Rename the interface to the stack number
-                                newint = re.sub('t0', 't' + stack + '/0', oldint)
-                                newint = re.sub('FastEthernet', 'GigabitEthernet', newint)
-                                # If it's a 24 to 48 conversion, bump the interface by 24.
-                                if args.to48 == 'true':
-                                    oldnumber = re.search(r'0\/(\d+)', newint, re.M|re.I).group(1)
-                                    newnumber = str(int(oldnumber) + 24)
-                                    newint = re.sub('0/'+ oldnumber,'0/'+ newnumber,newint) 
-                                # Grab the access vlan
-                                if 'access' in interfaces[item]['switchport'].keys():
-                                    accessvlan = interfaces[item]['switchport']['access']['vlan'] 
-                                # Grab the voice vlan
-                                if 'voice' in interfaces[item]['switchport'].keys():
-                                    voicevlan = interfaces[item]['switchport']['voice']['vlan']
-                                else:
-                                    voicevlan = ''
-                                # Open the vlan File to match vlan numbers to DNA Address/VN Segments
-                                with open(vlanfile) as vlancsvfile:
-                                    vlanreader = csv.reader(vlancsvfile, delimiter=',')
-                                    for row in vlanreader:
-                                        if row[1] == str(accessvlan):
-                                            dnaVNaccess = row[7]
-                                            # break -removed. Unsure why I added it.
-                                        if str(accessvlan) in VoiceVlans:
-                                            print('ERROR ACCESS VOICE VLAN on interface ' + oldint)
-                                            print('Processing stopped. Fix the YML source file')
-                                            os.remove(outputfile)
+                                    count = count + 1
+                                    if 'mode' in interfaces[item]['switchport'].keys():
+                                        mode = interfaces[item]['switchport']['mode'][0]
+                                    else:
+                                        mode = 'trunk'
+                                    # Rename the interface to the stack number
+                                    newint = re.sub('t0', 't' + str(stack) + '/0', oldint)
+                                    newint = re.sub('FastEthernet', 'GigabitEthernet', newint)
+                                    # If it's a 24 to 48 conversion, bump the interface by 24.
+                                    if args.to48 == 'true':
+                                        oldnumber = re.search(r'0\/(\d+)', newint, re.M|re.I).group(1)
+                                        newnumber = str(int(oldnumber) + 24)
+                                        newint = re.sub('0/'+ oldnumber,'0/'+ newnumber,newint) 
+                                    # Grab the access vlan
+                                    if 'access' in interfaces[item]['switchport'].keys():
+                                        accessvlan = interfaces[item]['switchport']['access']['vlan'] 
+                                    # Grab the voice vlan
+                                    if 'voice' in interfaces[item]['switchport'].keys():
+                                        voicevlan = interfaces[item]['switchport']['voice']['vlan']
+                                    else:
+                                        voicevlan = ''
+                                    # Open the vlan File to match vlan numbers to DNA Address/VN Segments
+                                    with open(vlanfile) as vlancsvfile:
+                                        vlanreader = csv.reader(vlancsvfile, delimiter=',')
+                                        for row in vlanreader:
+                                            if row[1] == str(accessvlan):
+                                                dnaVNaccess = row[7]
+                                                # break -removed. Unsure why I added it.
+                                            if str(accessvlan) in VoiceVlans:
+                                                print('ERROR ACCESS VOICE VLAN on interface ' + oldint)
+                                                print('Processing stopped. Fix the YML source file')
+                                                os.remove(outputfile)
+                                                quit()
+                                            if voicevlan == '':
+                                                dnaVNvoice = defaultVoiceVN
+                                            else:
+                                                if row[1] == str(voicevlan):
+                                                    dnaVNvoice = row[7]
+                                        if dnaVNaccess == '':
+                                            print('**** Fatal Error **** ')
+                                            print('Error on Port ' + oldint + ', Vlan ' + str(accessvlan) + ' not found. Update vlan.csv file and DNA Appliance.')
                                             quit()
-                                        if voicevlan == '':
-                                            dnaVNvoice = defaultVoiceVN
-                                        else:
-                                            if row[1] == str(voicevlan):
-                                                dnaVNvoice = row[7]
-                                    if dnaVNaccess == '':
-                                        print('**** Fatal Error **** ')
-                                        print('Error on Port ' + oldint + ', Vlan ' + str(accessvlan) + ' not found. Update vlan.csv file and DNA Appliance.')
-                                        quit()
-                                print(oldint, mode, accessvlan, voicevlan, '->', newint, dnaVNaccess, dnaVNvoice)
-                                exportwriter.writerow([hostname, newint, dnaVNaccess, dnaVNvoice, 'No Authentication'])
-        print("Total Interfaces:", count)
-        print("Finished conversion")
+                                    print(oldint, mode, accessvlan, voicevlan, '->', newint, dnaVNaccess, dnaVNvoice)
+                                    exportwriter.writerow([hostname, newint, dnaVNaccess, dnaVNvoice, 'No Authentication'])
+            print("Total Interfaces:", count)
+            print("Finished conversion")
     quit()
 
 # IOS Parser
@@ -813,14 +845,14 @@ if args.action == "backup":
     backupDNAC()
     quit()
 if args.action == "convert":
-    convertConfigYML()
+    convertConfigYML(args.incomingpath)
     quit()
 if args.action == "parse":
     buildYML(args.incomingpath)
     quit()
-if args.action == "migate":
-    buildYML(args.incomingpath)
-    convertConfigYML(args.incomingpath)
+if args.action == "migrate":
+    buildYML('ios_configs')
+    convertConfigYML('yml_cfgs','converted_csvs')
     quit()
 if args.action == "clear":
     clearSwitch(args.switchname)

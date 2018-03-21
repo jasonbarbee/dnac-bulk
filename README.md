@@ -39,13 +39,25 @@ This is a format that worked for us, it stores some relevant data as we migrate.
 This will take a file containg anything along with raw config, turn it into a YAML structure so we can later group the data together into switch stacks for DNA.
 
 Drop your bulk configs in a folder call configs. Use .txt or .cfg suffixes.
+Name them like this Closet_1.1_Stack# - like Closet_1.1_1.txt.
+If you have Closet_1.1_2.txt the script will join them together automatically as a stack.
+
+## Instructions to Convert IOS directly to DNA import format.
+1. Copy configs to configs folder.
+2. Run the script below.
 
 ```
-python3 dnac-bulk.py --action parse --inpath configs
+python3 dnac-bulk.py --action migrate
 ```
+## Migration process:
+1. Parses the config folder.
+2. Exports to YML in yml_cfg.
+3. Cross Lookups DNA reference information to generate import data.
+4. Exports CSVs to converted_csvs
+
 
 # Import a DNA switch via CSV
-Have a CSV file ready through conversion(below) or manual building that looks like this
+Have a CSV file ready through conversion(above) or manual building that looks like this
 ```
 Switch Name,Interface,Address Pool(VN),Voice Pool(VN),Authentication
 CLOSETSWITCH_1.domain.loc,GigabitEthernet1/0/1,10_0_0_0-Corp_VN,10_0_1_0-Phone_VN,No Authentication
