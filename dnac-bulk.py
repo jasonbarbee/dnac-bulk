@@ -1,4 +1,4 @@
-# DNAC Provisioning script
+i# DNAC Provisioning script
 # Author Jason Barbee
 # Contributions by: Jeremy Sanders
 # Copyright TekLinks, Inc 2018
@@ -271,7 +271,7 @@ def getPhoneList():
         print("DEBUG: Get Host Lookup Response", LookupResponse)
     return jsonLookup['response']
 
-def importDNAC():
+def importDNAC(switchName):
     print("*** NOTE: This wipes all configuration and applies this to the switch")
     #init switch list
     switchList = []
@@ -320,11 +320,15 @@ def importDNAC():
                         intUUID=iface['id']
                 
                 #get data net uuid
+                if row[2] == '':
+                    print("*** ERROR *** Missing Data Vlan in CSV")
                 dataNetworkUUID=getNetUUID(row[2])
                 if dataNetworkUUID == 'NOT FOUND':
                     print("*** ERROR ****")
                     print("DNA Data Fabric Address Pool not Found:", row[2])
                 #get voice net uuid
+                if row[3]] == '':
+                    print("*** ERROR *** Missing Voice Vlan in CSV")
                 voiceNetworkUUID=getNetUUID(row[3])
                 if dataNetworkUUID == 'NOT FOUND':
                     print("*** ERROR ****")
@@ -370,10 +374,10 @@ def importDNAC():
     else:
         print("---------")
         print("Provisioning failed.")
-    quit()
 
 def clearSwitch(switchName): 
     # This function will clear all interfaces from a given switch.
+    print("Clearing Switch to prepare for a fresh import...")
     #add interface to master interface list
     switchUUID = getSwitchUUID(switchName)
     switchData = getDeviceInfo(switchUUID)
@@ -408,7 +412,7 @@ def clearSwitch(switchName):
     taskId = ''
     if updateResponse.status_code == 202:
         taskId = updateResponse.json()['response']['taskId']
-        print("Clear Switch Task was submitted - Task ID %s", taskId)
+        print("Clear Switch Task was submitted - Task ID ", taskId)
     else:
         print("Clear Switch Task Failed to submit. Error code ", updateResponse.status_code)
         quit()
@@ -425,7 +429,33 @@ def clearSwitch(switchName):
         print("Provisioning complete.")
     else:
         print("Provisioning failed.")
-    quit()
+
+def printExport(switchname):
+    print("Printing current DNA Config for ", switchname)
+    # args.file = "export.csv"
+    switchUUID = getSwitchUUID(switchname)
+    switchIntList = getIntList(switchUUID)
+    switchIntDict = {}
+    for item in switchIntList:
+        switchIntDict[item['id']] = item['portName']
+    switchInfo = getDeviceInfo(switchUUID)
+    for item in switchInfo['deviceInterfaceInfo']:
+        switchName = getSwitchName(switchUUID)
+        intId = item['interfaceId']
+        intName = switchIntDict[intId]
+        dataNetName = ''
+        voiceNetName = ''
+        if 'authenticationProfile' in item.keys():
+            authProfileName = item['authenticationProfile']['name']
+        else:
+            authProfileName = 'No Authentication'
+        if len(item['segment']) == 2:
+            dataNetName = getNetName(item['segment'][0]['idRef'])
+            voiceNetName = getNetName(item['segment'][1]['idRef'])
+        elif len(item['segment']) == 1:
+            dataNetName = getNetName(item['segment'][0]['idRef'])
+        print(switchName, intName, authProfileName, dataNetName, voiceNetName)
+    print("Exporting Complete")
 
 def exportDNAC(switchname):
     print("Exporting Config for ", switchname)
@@ -536,6 +566,16 @@ def convertConfigYML(inpath,outpath):
             # # Remove the old file.
             # if os.path.exists(newpath+ymlfilename+".csv"):
             #     os.remove(newpath+ymlfilename+".csv")
+        if (stack == 1):
+            if os.path.exists(newpath+ymlfilename+".csv"):
+                # write header in the top of the file. We found stack 1 file if it exists that means we processed stack 2 first.
+                csvfile = open(newpath+"/"+ymlfilename+".csv",'r')
+                oldfiledata = csvfile.read()
+                csvfile.close()
+                csvfile = open(newpath+"/"+ymlfilename+".csv",'w')
+                filedata = csvfile.write('Switch Name, Interface, Address Pool(VN), Voice Pool(VN), Authentication')
+                filedata = csvfile.write(oldfiledata)
+                csvfile.close()
         with open(newpath+"/"+ymlfilename+".csv",'a') as csvfile:
             count = 0
             exportwriter = csv.writer(csvfile, delimiter=',')
@@ -719,17 +759,30 @@ def buildYML(path):
             if not os.path.exists(os.path.dirname(finalfile)):
                 os.makedirs(finalfile)
             #open file for write out
+            vlanlist = []
             with open(finalfile+ymlfilname+".yml", "w") as text_file:
                 nowantVlans=""
                 text_file.write(collectLine)
                 print("File : yml_cfgs/"+ymlfilname+".yml created!")
                 print(str(intCount) + " interfaces found ")
+                with open(vlanfile) as vlancsvfile:
+                    vlanreader = csv.reader(vlancsvfile, delimiter=',')
+                    row = 1
+                    for row in vlanreader:
+                        vlanlist.append(row[1])
                 #output access vlans
                 i=0
-                while i < len(accessVlans):
-                    finalVlanOut += accessVlans[i]+","
-                    i += 1
+                notfoundvlans = []
+                # while i < len(accessVlans):
+                for vlan in accessVlans:
+                    finalVlanOut += vlan +","
+                    if vlan in vlanlist:
+                        pass
+                    else:
+                        notfoundvlans.append(vlan)
                 print("Access Vlans: "+finalVlanOut.rstrip(','))
+                if notfoundvlans != []:
+                    print("Vlans not found!", notfoundvlans)
                 #output voice vlans
                 i=0
                 if (voiceVlans):
@@ -836,7 +889,9 @@ reqHeader['content-type'] = 'application/json'
 reqHeader['Cookie']  = authDNAC()
 
 if args.action == "import":
-    importDNAC()
+    clearSwitch(args.switchname)
+    importDNAC(args.switchname)
+    printExport(args.switchname)
     quit()
 if args.action == "export":
     exportDNAC(args.switchname)

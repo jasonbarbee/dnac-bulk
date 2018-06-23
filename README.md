@@ -5,7 +5,8 @@ Contributions by: Jeremy Sanders, Heath Kuespert(htothek)
 
 Copyright TekLinks, Inc 2018
 
-Latest Version tested DNA 1.1.
+Tested with DNA 1.1.1, 1.1.2, 1.1.4, 1.1.6
+Latest Version tested DNA 1.1.6
 
 # Features
 * Imports CSV to DNA Switch ports
@@ -139,15 +140,13 @@ python3 dnac-bulk --stack 2 --input 212.yml --output 21.csv  --to48
 
 # Caveats
 * VN/Pool export shows up on screen, it does not write to CSV well yet. Partially implemented.
-* I never had to bulk 802.1x yet, we are using no authentication, so the parser does not reflect if the port used 802.1x or not. The import process example is for no authentication, but you can change that to any of the expected values in DNA.
-* This uses undocumented API calls to DNA, and may be volatile. I am documeting what I use it on. I had to reverse engineer the calls using Firefox Inspector on the DNA Web Interface.
-* I plan to support this through a rollout of a few hundred switches probably till late 2018, we'll see where things are at that point. 
+* This uses unofficial API calls to DNA, and may be volatile, but has not been so far(ok - one time they changed an API key), but I follow the WEB UI's response. This is not doing anything more magic than the same API calls you use when in Firefox. I just had to reverse engineer the calls using Firefox Inspector on the DNA Web Interface.
+* I plan to actively support this through a rollout of a few hundred more switches probably till end of 2018.
 * Open a github issue if you have one, or submit a pull request and I'll review it. We have 300 switches or so left to go, so if you think it's useful, I might add it.
-* Long term, once Cisco publishes a real DNA API, this tool may become obsolete.
+* Long term, once Cisco publishes a real DNA API, I don't know what will happen to this tool.
 
 # Likely roadmap
-* Structure config files so that it stacks automatically.
-* Remove the voice vlan markings in config file and use CSV to understand voice vlans
+* Rethink the way voice address pools are handled.
 
 # License
 MIT License.
