@@ -3,8 +3,6 @@ Author: Jason Barbee
 
 Contributions by: Jeremy Sanders, Heath Kuespert(htothek)
 
-Copyright TekLinks, Inc 2018
-
 Tested with DNA 1.1.1, 1.1.2, 1.1.4, 1.1.6, 1.1.8, 1.2.5
 Latest Version tested DNA 1.2.5
 
@@ -156,12 +154,14 @@ python3 dnac-bulk --stack 2 --input 212.yml --output 21.csv  --to48
 * Long term, once Cisco publishes a real DNA API, I don't know what will happen to this tool.
 
 # Likely roadmap
+* Better documentation
 * Rethink the way voice address pools are handled.
 
 # License
 MIT License.
+Copyright Jason Barbee 2018.
 
 # Want Professional DNA / SD-Access Assistance?
-TekLinks is a Cisco Gold Partner that offers professional services to support your DNA SD-Access design and installation.
+C Spire is a Cisco Gold Partner that offers professional services to support your DNA SD-Access design and installation.
 
-Visit www.teklinks.com and contact us to talk more.
+Visit www.cspire.com for more information
