@@ -1,4 +1,4 @@
-i# DNAC Provisioning script
+# DNAC Provisioning script
 # Author Jason Barbee
 # Contributions by: Jeremy Sanders
 # Copyright TekLinks, Inc 2018
@@ -32,6 +32,8 @@ parser.add_argument("--inventory","-inv", help="Print Switch Inventory IP and St
 parser.add_argument("--securecrt","-crt",help="Print out Secure CRT file of the database")
 parser.add_argument("--mac","-f",help="Find MAC address in the network")
 parser.add_argument("--inpath", "--path", dest="incomingpath", help="Open specified path for cfg files")
+parser.add_argument("--backup", "-b", help="Backup switch port configs from DNA")
+parser.add_argument("--backupconfigs", "-bc", help="Backup raw configs from DNA")
 vlancsvfile = 'vlans.csv'
 
 # read arguments from the command line
@@ -74,7 +76,7 @@ if args.input is None:
         print("Please Provide an input file with --input (filename.csv)")
     if args.action in ['convert','parse','migrate']:
        if args.incomingpath is None:
-            print("Please Provide an input path with --inpath") 
+            print("Please Provide an input path with --inpath")
 else:
     inputfile = args.input
 if args.output is None:
@@ -126,6 +128,7 @@ def getSwitchLocation(switchName):
             return []
         else:
             return json['response'][switchUUID]
+
 
 def getIntList(switchUUID):
     #query for the interfame name mapping to UUID
@@ -327,7 +330,7 @@ def importDNAC(switchName):
                     print("*** ERROR ****")
                     print("DNA Data Fabric Address Pool not Found:", row[2])
                 #get voice net uuid
-                if row[3]] == '':
+                if row[3] == '':
                     print("*** ERROR *** Missing Voice Vlan in CSV")
                 voiceNetworkUUID=getNetUUID(row[3])
                 if dataNetworkUUID == 'NOT FOUND':
@@ -875,6 +878,22 @@ def buildSecureCRTFile():
             print("Exporting " + switch['hostname'])
             exportwriter.writerow([switch['hostname'], switch['managementIpAddress'], 'SSH2', securecrt_username, folder, 'XTerm'])
     print("Export to SecureCRT Complete")
+    quit()
+
+def downloadConfig(switchUUID,name):
+    URL = 'https://' + dnacFQDN + '/api/v1/network-device/' + switchUUID + '/config'
+    resp = s.get(URL, verify=False, headers=reqHeader)
+    config = resp.json()['response']
+    with open('configs/' + name, 'wb') as f:  
+        f.write(config)
+    f.close()
+
+def backupConfigs():
+    switchList = getSwitchList()
+    for switch in switchList:
+        print("Exporting " + switch['hostname'])
+        downloadConfig(switch['id'],switch['hostname'])
+    print("Export configs Complete")
         
     quit()
 # MAIN Program
@@ -925,6 +944,9 @@ if args.action == "inventory":
     quit()
 if args.action == "securecrt":
     buildSecureCRTFile()
+    quit()
+if args.action == "backupconfigs":
+    backupConfigs()
     quit()
 else:
     print("Invalid Action please try running --help")

@@ -5,8 +5,8 @@ Contributions by: Jeremy Sanders, Heath Kuespert(htothek)
 
 Copyright TekLinks, Inc 2018
 
-Tested with DNA 1.1.1, 1.1.2, 1.1.4, 1.1.6
-Latest Version tested DNA 1.1.6
+Tested with DNA 1.1.1, 1.1.2, 1.1.4, 1.1.6, 1.1.8, 1.2.5
+Latest Version tested DNA 1.2.5
 
 # Features
 * Imports CSV to DNA Switch ports
@@ -17,11 +17,12 @@ Latest Version tested DNA 1.1.6
 * Renames FastEthernet0/XX to GigabitEthernetX/0/XX based on the stack parameter passed.
 * Locates a MAC address or any partial mac system wide in DNA.
 * Prints Inventory and Provisioning Status of the system
+* Exports configs from all devices in DNAC into raw files under configs folder.
 
 # Setup Python for DNAC-Bulk Tools
-Install Python 3 and Libraries
+Install Python 2 (or 3 doesn't matter) and Libraries
 ```
-pip3 install requests pyaml
+pip3 install requests pyaml requests
 ```
 
 Modify your config.yml file
@@ -94,6 +95,15 @@ Host MAC: 08:cc:a7:85:cb:5f
 Switch Device IP: 10.1.1.1
 Switch Name: switch.domain.loc
 Switch Interface: GigabitEthernet1/0/48
+```
+
+# Backup all configs from all devices in DNAC
+```
+python3 dnac-bulk.py --action backupconfigs
+```
+```
+-------
+Exporting switchname...
 ```
 
 # Search All IP Phones in DNA by partial MAC
