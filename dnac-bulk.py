@@ -884,7 +884,7 @@ def downloadConfig(switchUUID,name):
     URL = 'https://' + dnacFQDN + '/api/v1/network-device/' + switchUUID + '/config'
     resp = s.get(URL, verify=False, headers=reqHeader)
     config = resp.json()['response']
-    with open('configs/' + name, 'wb') as f:  
+    with open('configs/' + name + ".txt", 'wb') as f:  
         f.write(config)
     f.close()
 
