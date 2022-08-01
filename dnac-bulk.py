@@ -180,9 +180,9 @@ def getNetName(segmentUUID):
         print("DEBUG: GetNetName Lookup Response", jsonSwitchLookup)
     return jsonSwitchLookup['response'][0]['name']
 
-def getDeviceInfo(switchUUID):
+def getDeviceInfo(switchName):
     #query for existing device info
-    deviceInfoURL = 'https://' + dnacFQDN + '/api/v2/data/customer-facing-service/DeviceInfo?name=' + switchUUID
+    deviceInfoURL = 'https://' + dnacFQDN + '/api/v2/data/customer-facing-service/DeviceInfo?name=' + switchName
     deviceInfoResponse = s.get(deviceInfoURL, verify=False, headers=reqHeader)
     jsonDeviceInfo = deviceInfoResponse.json()
     return jsonDeviceInfo['response'][0]
@@ -297,7 +297,7 @@ def importDNAC(switchName):
                 print("Preparing: ", row[1], row[2], row[3], row[4])
                 if len(switchList)==0:
                     #if the existing switch list is empty, get the existing device info and add it to the list
-                    switchList.append(getDeviceInfo(switchUUID))
+                    switchList.append(getDeviceInfo(switchName))
                     #clear the interface list (this script is only for whole switch provisioning. It will erase prior configuration)
                     switchList[0]['deviceInterfaceInfo']=[]
                     #set switchMatch to true and store the index of this switch in our switch array
@@ -307,12 +307,12 @@ def importDNAC(switchName):
                     switchMatch=[False,-1]
                     #loop through switch list to see if our UUID matches one we are already working on
                     for index2, switch in enumerate(switchList, start=0):
-                        if switch['name']==switchUUID:
+                        if switch['name']==switchName:
                             #set match to true and store the index number of the matched switch
                             switchMatch=[True,index2]
                     #if no match found append to end of list and store new index
                     if switchMatch[0]==False:
-                        switchList.append(getDeviceInfo(switchUUID))
+                        switchList.append(getDeviceInfo(switchName))
                         switchMatch=[True,len(switchList)-1]
                         #clear the interface list (this script is only for whole switch provisioning. It will erase prior configuration)
                         switchList[0]['deviceInterfaceInfo']=[] 
@@ -383,7 +383,7 @@ def clearSwitch(switchName):
     print("Clearing Switch to prepare for a fresh import...")
     #add interface to master interface list
     switchUUID = getSwitchUUID(switchName)
-    switchData = getDeviceInfo(switchUUID)
+    switchData = getDeviceInfo(switchName)
     switchIntList = getIntList(switchUUID)
     # Copy the Switch JSON Data
     newSwitchData = switchData.copy()
@@ -441,7 +441,7 @@ def printExport(switchname):
     switchIntDict = {}
     for item in switchIntList:
         switchIntDict[item['id']] = item['portName']
-    switchInfo = getDeviceInfo(switchUUID)
+    switchInfo = getDeviceInfo(switchName)
     for item in switchInfo['deviceInterfaceInfo']:
         switchName = getSwitchName(switchUUID)
         intId = item['interfaceId']
@@ -468,7 +468,7 @@ def exportDNAC(switchname):
     switchIntDict = {}
     for item in switchIntList:
         switchIntDict[item['id']] = item['portName']
-    switchInfo = getDeviceInfo(switchUUID)
+    switchInfo = getDeviceInfo(switchName)
     with open(args.output, "w") as csvfile:
         exportwriter = csv.writer(csvfile, delimiter=',')
         exportwriter.writerow(['Switch Name', 'Interface', 'Address Pool(VN)', 'Voice Pool(VN)', 'Authentication'])
@@ -504,7 +504,7 @@ def backupDNAC():
             switchIntDict = {}
             for item in switchIntList:
                 switchIntDict[item['id']] = item['portName']
-                switchInfo = getDeviceInfo(switchUUID)
+                switchInfo = getDeviceInfo(switchName)
                 for item in switchInfo['deviceInterfaceInfo']:
                     switchName = getSwitchName(switchUUID)
                     intId = item['interfaceId']
