@@ -44,7 +44,7 @@ args = parser.parse_args()
 cfg = ''
 cfgfile = ''
 with open('config.yml','r') as cfgfile:
-    cfg = yaml.load(cfgfile)
+    cfg = yaml.load(cfgfile, Loader=yaml.Loader)
 
 dnacFQDN=cfg['global']['hostname']
 username = cfg['global']['username']
@@ -322,36 +322,73 @@ def importDNAC(switchName):
                     if iface['portName']==row[1]:
                         intUUID=iface['id']
                 
-                #get data net uuid
                 if row[2] == '':
-                    print("*** ERROR *** Missing Data Vlan in CSV")
-                dataNetworkUUID=getNetUUID(row[2])
-                if dataNetworkUUID == 'NOT FOUND':
-                    print("*** ERROR ****")
-                    print("DNA Data Fabric Address Pool not Found:", row[2])
-                #get voice net uuid
-                if row[3] == '':
-                    print("*** ERROR *** Missing Voice Vlan in CSV")
-                voiceNetworkUUID=getNetUUID(row[3])
-                if dataNetworkUUID == 'NOT FOUND':
-                    print("*** ERROR ****")
-                    print("DNA Voice Fabric Address Pool not Found:", row[3])
-                #get port auth uuid
-                authTypeUUID=getAuthUUID(row[4])
+                    print("Missing Data Vlan in CSV. Interface object will only contain Voice VLAN")
+                    #build voice interface object
+                    voiceNetworkUUID=getNetUUID(row[3])
+                    if voiceNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Voice Fabric Address Pool not Found:", row[3])
+                    #get port auth uuid
+                    authTypeUUID=getAuthUUID(row[4])                   
+                    interface = {
+                        "interfaceId": intUUID,
+                        "authenticationProfileId": authTypeUUID,
+                        "connectedToSubtendedNode": False,
+                        "role": "LAN",
+                        "segment": [
+                            {'idRef': voiceNetworkUUID}
+                        ]
+                    }
+                    if args.debug:
+                        print("DEBUG: Interface Object", interface)
 
-                #build interface object
-                interface = {
-                    "interfaceId": intUUID,
-                    "authenticationProfileId": authTypeUUID,
-                    "connectedToSubtendedNode": False,
-                    "role": "LAN",
-                    "segment": [
-                        {'idRef': dataNetworkUUID},
-                        {'idRef': voiceNetworkUUID}
-                    ]
-                }
-                if args.debug:
-                    print("DEBUG: Interface Object", interface)
+                if row[3] == '':
+                    print("Missing Voice Vlan in CSV. Interface object will only contain Data VLAN")
+                    #build data interface object
+                    dataNetworkUUID=getNetUUID(row[2])
+                    if dataNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Data Fabric Address Pool not Found:", row[2])                    
+                    #get port auth uuid
+                    authTypeUUID=getAuthUUID(row[4])            
+                    interface = {
+                        "interfaceId": intUUID,
+                        "authenticationProfileId": authTypeUUID,
+                        "connectedToSubtendedNode": False,
+                        "role": "LAN",
+                        "segment": [
+                            {'idRef': dataNetworkUUID}
+                        ]
+                    }
+                    if args.debug:
+                        print("DEBUG: Interface Object", interface)
+                
+                else:
+                    #build data/voice interface object
+                    dataNetworkUUID=getNetUUID(row[2])
+                    voiceNetworkUUID=getNetUUID(row[3])
+                    if dataNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Data Fabric Address Pool not Found:", row[2])  
+                    if voiceNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Voice Fabric Address Pool not Found:", row[2])                   
+                    #get port auth uuid
+                    authTypeUUID=getAuthUUID(row[4])            
+                    interface = {
+                        "interfaceId": intUUID,
+                        "authenticationProfileId": authTypeUUID,
+                        "connectedToSubtendedNode": False,
+                        "role": "LAN",
+                        "segment": [
+                            {'idRef': dataNetworkUUID},
+                            {'idRef': voiceNetworkUUID}
+                        ]
+                    }
+                    if args.debug:
+                        print("DEBUG: Interface Object", interface)
+
                 #add interface to master interface list
                 switchList[switchMatch[1]]['deviceInterfaceInfo'].append(interface)
         if args.debug:
@@ -541,7 +578,7 @@ def convertConfigYML(inpath,outpath):
     for filename in glob.glob(os.path.join(inpath, '*.yml')):
         # read each filename and conver it one by one.
         with open(filename,'r') as cfgfile:
-                cfg = yaml.load(cfgfile)
+                cfg = yaml.load(cfgfile, Loader=yaml.Loader)
         #build file output name based on existing config name
         filename_base, file_extension = os.path.splitext(filename)
         # Normalize the original filename with the stack key in it.
