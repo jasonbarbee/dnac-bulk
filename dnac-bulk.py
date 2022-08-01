@@ -221,7 +221,7 @@ def getTaskStatus(taskId):
         #     return taskResponse.json()['response']['endTime']
         if 'errorCode' in taskResponse.json()['response']:
             # If there's an error code, it did not succeed.
-            print("Cisco Raw Result:     ", taskResponse.json()['response']['errorCode'] + ':' + taskResponse.json()['response']['failureReason']) 
+            print("Cisco Raw Result:", taskResponse.json()['response']['errorCode'] + ':' + taskResponse.json()['response']['failureReason']) 
             if "Invalid idRef" in taskResponse.json()['response']['failureReason']:
                 print("**** Recommendation ****")
                 print("Are all the DNA address pools assigned into the fabric you are provisioning?")
@@ -398,9 +398,9 @@ def importDNAC(switchName):
         updateResponse = s.put(updateURL, data=json.dumps(switchList), headers=reqHeader)
         if updateResponse.status_code == 202:
             taskId = updateResponse.json()['response']['taskId']
-            print("Provisioning Task was submitted - Task ID ", taskId)
+            print("Provisioning Task was submitted - Task ID", taskId)
         else:
-            print("Provisioning Task Failed to submit. Error code ", updateResponse.status_code)
+            print("Provisioning Task Failed to submit. Error code", updateResponse.status_code)
 
     # Wait for the task to complete with a valid EndTime.
     task_status = getTaskStatus(taskId)
@@ -454,7 +454,7 @@ def clearSwitch(switchName):
         taskId = updateResponse.json()['response']['taskId']
         print("Clear Switch Task was submitted - Task ID ", taskId)
     else:
-        print("Clear Switch Task Failed to submit. Error code ", updateResponse.status_code)
+        print("Clear Switch Task Failed to submit. Error code", updateResponse.status_code)
         quit()
 
     # Wait for the task to complete with a valid EndTime.
@@ -498,7 +498,7 @@ def printExport(switchName):
     print("Exporting Complete")
 
 def exportDNAC(switchName):
-    print("Exporting Config for ", switchName)
+    print("Exporting Config for", switchName)
     # args.file = "export.csv"
     switchUUID = getSwitchUUID(switchName)
     switchIntList = getIntList(switchUUID)
@@ -848,7 +848,7 @@ def findHost(mac):
     print("Searching for Mac Address: ", mac)
     response = lookupHostMac(mac)
     # This should be a singular response.
-    print("Host IP: ", response['hostIp'])
+    print("Host IP:", response['hostIp'])
     print("Host MAC:", response['hostMac'])
     print("Switch Device IP:", response['connectedNetworkDeviceIpAddress'])
     print("Switch Name:", response['connectedNetworkDeviceName'])
@@ -857,7 +857,7 @@ def findHost(mac):
 
 def findPhonePartial(mac):
     # Takes a MAC and searches for a partial match. Strips : from the user input and the responses.
-    print("Searching for Phone MAC Addresses ending with ", mac)
+    print("Searching for Phone MAC Addresses ending with", mac)
     response = getPhoneList()
     mac = mac.lower()
     mac = re.sub(':','',mac)
@@ -869,7 +869,7 @@ def findPhonePartial(mac):
             # We found the MAC, break out and print it.
             break
     if mac in newmac:
-        print("Host IP: ", item['hostIp'])
+        print("Host IP:", item['hostIp'])
         print("Host MAC:", item['hostMac'])
         print("Switch Device IP:", item['connectedNetworkDeviceIpAddress'])
         print("Switch Name:", item['connectedNetworkDeviceName'])
