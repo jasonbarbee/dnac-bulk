@@ -294,7 +294,7 @@ def importDNAC(switchName):
         for index, row in enumerate(switchReader, start=0):
             #skip header row
             if index > 0:
-                print("Preparing: ", row[1], row[2], row[3], row[4])
+                print("Preparing:", row[1], row[2], row[3], row[4])
                 if len(switchList)==0:
                     #if the existing switch list is empty, get the existing device info and add it to the list
                     switchList.append(getDeviceInfo(switchName))
@@ -471,7 +471,7 @@ def clearSwitch(switchName):
         print("Provisioning failed.")
 
 def printExport(switchName):
-    print("Printing current DNA Config for ", switchName)
+    print("Printing current DNA Config for", switchName)
     # args.file = "export.csv"
     switchUUID = getSwitchUUID(switchName)
     switchIntList = getIntList(switchUUID)
