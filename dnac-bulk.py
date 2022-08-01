@@ -470,10 +470,10 @@ def clearSwitch(switchName):
     else:
         print("Provisioning failed.")
 
-def printExport(switchname):
-    print("Printing current DNA Config for ", switchname)
+def printExport(switchName):
+    print("Printing current DNA Config for ", switchName)
     # args.file = "export.csv"
-    switchUUID = getSwitchUUID(switchname)
+    switchUUID = getSwitchUUID(switchName)
     switchIntList = getIntList(switchUUID)
     switchIntDict = {}
     for item in switchIntList:
@@ -497,10 +497,10 @@ def printExport(switchname):
         print(switchName, intName, authProfileName, dataNetName, voiceNetName)
     print("Exporting Complete")
 
-def exportDNAC(switchname):
-    print("Exporting Config for ", switchname)
+def exportDNAC(switchName):
+    print("Exporting Config for ", switchName)
     # args.file = "export.csv"
-    switchUUID = getSwitchUUID(switchname)
+    switchUUID = getSwitchUUID(switchName)
     switchIntList = getIntList(switchUUID)
     switchIntDict = {}
     for item in switchIntList:
