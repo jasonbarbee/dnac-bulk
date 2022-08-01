@@ -343,7 +343,7 @@ def importDNAC(switchName):
                     if args.debug:
                         print("DEBUG: Interface Object", interface)
 
-                if row[3] == '':
+                elif row[3] == '':
                     print("Missing Voice Vlan in CSV. Interface object will only contain Data VLAN")
                     #build data interface object
                     dataNetworkUUID=getNetUUID(row[2])
