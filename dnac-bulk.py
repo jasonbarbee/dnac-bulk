@@ -44,7 +44,7 @@ args = parser.parse_args()
 cfg = ''
 cfgfile = ''
 with open('config.yml','r') as cfgfile:
-    cfg = yaml.load(cfgfile)
+    cfg = yaml.load(cfgfile, Loader=yaml.Loader)
 
 dnacFQDN=cfg['global']['hostname']
 username = cfg['global']['username']
@@ -180,9 +180,9 @@ def getNetName(segmentUUID):
         print("DEBUG: GetNetName Lookup Response", jsonSwitchLookup)
     return jsonSwitchLookup['response'][0]['name']
 
-def getDeviceInfo(switchUUID):
+def getDeviceInfo(switchName):
     #query for existing device info
-    deviceInfoURL = 'https://' + dnacFQDN + '/api/v2/data/customer-facing-service/DeviceInfo?name=' + switchUUID
+    deviceInfoURL = 'https://' + dnacFQDN + '/api/v2/data/customer-facing-service/DeviceInfo?name=' + switchName
     deviceInfoResponse = s.get(deviceInfoURL, verify=False, headers=reqHeader)
     jsonDeviceInfo = deviceInfoResponse.json()
     return jsonDeviceInfo['response'][0]
@@ -221,7 +221,7 @@ def getTaskStatus(taskId):
         #     return taskResponse.json()['response']['endTime']
         if 'errorCode' in taskResponse.json()['response']:
             # If there's an error code, it did not succeed.
-            print("Cisco Raw Result:     ", taskResponse.json()['response']['errorCode'] + ':' + taskResponse.json()['response']['failureReason']) 
+            print("Cisco Raw Result:", taskResponse.json()['response']['errorCode'] + ':' + taskResponse.json()['response']['failureReason']) 
             if "Invalid idRef" in taskResponse.json()['response']['failureReason']:
                 print("**** Recommendation ****")
                 print("Are all the DNA address pools assigned into the fabric you are provisioning?")
@@ -294,10 +294,10 @@ def importDNAC(switchName):
         for index, row in enumerate(switchReader, start=0):
             #skip header row
             if index > 0:
-                print("Preparing: ", row[1], row[2], row[3], row[4])
+                print("Preparing:", row[1], row[2], row[3], row[4])
                 if len(switchList)==0:
                     #if the existing switch list is empty, get the existing device info and add it to the list
-                    switchList.append(getDeviceInfo(switchUUID))
+                    switchList.append(getDeviceInfo(switchName))
                     #clear the interface list (this script is only for whole switch provisioning. It will erase prior configuration)
                     switchList[0]['deviceInterfaceInfo']=[]
                     #set switchMatch to true and store the index of this switch in our switch array
@@ -307,12 +307,12 @@ def importDNAC(switchName):
                     switchMatch=[False,-1]
                     #loop through switch list to see if our UUID matches one we are already working on
                     for index2, switch in enumerate(switchList, start=0):
-                        if switch['name']==switchUUID:
+                        if switch['name']==switchName:
                             #set match to true and store the index number of the matched switch
                             switchMatch=[True,index2]
                     #if no match found append to end of list and store new index
                     if switchMatch[0]==False:
-                        switchList.append(getDeviceInfo(switchUUID))
+                        switchList.append(getDeviceInfo(switchName))
                         switchMatch=[True,len(switchList)-1]
                         #clear the interface list (this script is only for whole switch provisioning. It will erase prior configuration)
                         switchList[0]['deviceInterfaceInfo']=[] 
@@ -322,36 +322,73 @@ def importDNAC(switchName):
                     if iface['portName']==row[1]:
                         intUUID=iface['id']
                 
-                #get data net uuid
                 if row[2] == '':
-                    print("*** ERROR *** Missing Data Vlan in CSV")
-                dataNetworkUUID=getNetUUID(row[2])
-                if dataNetworkUUID == 'NOT FOUND':
-                    print("*** ERROR ****")
-                    print("DNA Data Fabric Address Pool not Found:", row[2])
-                #get voice net uuid
-                if row[3] == '':
-                    print("*** ERROR *** Missing Voice Vlan in CSV")
-                voiceNetworkUUID=getNetUUID(row[3])
-                if dataNetworkUUID == 'NOT FOUND':
-                    print("*** ERROR ****")
-                    print("DNA Voice Fabric Address Pool not Found:", row[3])
-                #get port auth uuid
-                authTypeUUID=getAuthUUID(row[4])
+                    print("Missing Data Vlan in CSV. Interface object will only contain Voice VLAN")
+                    #build voice interface object
+                    voiceNetworkUUID=getNetUUID(row[3])
+                    if voiceNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Voice Fabric Address Pool not Found:", row[3])
+                    #get port auth uuid
+                    authTypeUUID=getAuthUUID(row[4])                   
+                    interface = {
+                        "interfaceId": intUUID,
+                        "authenticationProfileId": authTypeUUID,
+                        "connectedToSubtendedNode": False,
+                        "role": "LAN",
+                        "segment": [
+                            {'idRef': voiceNetworkUUID}
+                        ]
+                    }
+                    if args.debug:
+                        print("DEBUG: Interface Object", interface)
 
-                #build interface object
-                interface = {
-                    "interfaceId": intUUID,
-                    "authenticationProfileId": authTypeUUID,
-                    "connectedToSubtendedNode": False,
-                    "role": "LAN",
-                    "segment": [
-                        {'idRef': dataNetworkUUID},
-                        {'idRef': voiceNetworkUUID}
-                    ]
-                }
-                if args.debug:
-                    print("DEBUG: Interface Object", interface)
+                elif row[3] == '':
+                    print("Missing Voice Vlan in CSV. Interface object will only contain Data VLAN")
+                    #build data interface object
+                    dataNetworkUUID=getNetUUID(row[2])
+                    if dataNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Data Fabric Address Pool not Found:", row[2])                    
+                    #get port auth uuid
+                    authTypeUUID=getAuthUUID(row[4])            
+                    interface = {
+                        "interfaceId": intUUID,
+                        "authenticationProfileId": authTypeUUID,
+                        "connectedToSubtendedNode": False,
+                        "role": "LAN",
+                        "segment": [
+                            {'idRef': dataNetworkUUID}
+                        ]
+                    }
+                    if args.debug:
+                        print("DEBUG: Interface Object", interface)
+                
+                else:
+                    #build data/voice interface object
+                    dataNetworkUUID=getNetUUID(row[2])
+                    voiceNetworkUUID=getNetUUID(row[3])
+                    if dataNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Data Fabric Address Pool not Found:", row[2])  
+                    if voiceNetworkUUID == 'NOT FOUND':
+                        print("*** ERROR ****")
+                        print("DNA Voice Fabric Address Pool not Found:", row[2])                   
+                    #get port auth uuid
+                    authTypeUUID=getAuthUUID(row[4])            
+                    interface = {
+                        "interfaceId": intUUID,
+                        "authenticationProfileId": authTypeUUID,
+                        "connectedToSubtendedNode": False,
+                        "role": "LAN",
+                        "segment": [
+                            {'idRef': dataNetworkUUID},
+                            {'idRef': voiceNetworkUUID}
+                        ]
+                    }
+                    if args.debug:
+                        print("DEBUG: Interface Object", interface)
+
                 #add interface to master interface list
                 switchList[switchMatch[1]]['deviceInterfaceInfo'].append(interface)
         if args.debug:
@@ -361,9 +398,9 @@ def importDNAC(switchName):
         updateResponse = s.put(updateURL, data=json.dumps(switchList), headers=reqHeader)
         if updateResponse.status_code == 202:
             taskId = updateResponse.json()['response']['taskId']
-            print("Provisioning Task was submitted - Task ID ", taskId)
+            print("Provisioning Task was submitted - Task ID", taskId)
         else:
-            print("Provisioning Task Failed to submit. Error code ", updateResponse.status_code)
+            print("Provisioning Task Failed to submit. Error code", updateResponse.status_code)
 
     # Wait for the task to complete with a valid EndTime.
     task_status = getTaskStatus(taskId)
@@ -383,7 +420,7 @@ def clearSwitch(switchName):
     print("Clearing Switch to prepare for a fresh import...")
     #add interface to master interface list
     switchUUID = getSwitchUUID(switchName)
-    switchData = getDeviceInfo(switchUUID)
+    switchData = getDeviceInfo(switchName)
     switchIntList = getIntList(switchUUID)
     # Copy the Switch JSON Data
     newSwitchData = switchData.copy()
@@ -417,7 +454,7 @@ def clearSwitch(switchName):
         taskId = updateResponse.json()['response']['taskId']
         print("Clear Switch Task was submitted - Task ID ", taskId)
     else:
-        print("Clear Switch Task Failed to submit. Error code ", updateResponse.status_code)
+        print("Clear Switch Task Failed to submit. Error code", updateResponse.status_code)
         quit()
 
     # Wait for the task to complete with a valid EndTime.
@@ -433,15 +470,15 @@ def clearSwitch(switchName):
     else:
         print("Provisioning failed.")
 
-def printExport(switchname):
-    print("Printing current DNA Config for ", switchname)
+def printExport(switchName):
+    print("Printing current DNA Config for", switchName)
     # args.file = "export.csv"
-    switchUUID = getSwitchUUID(switchname)
+    switchUUID = getSwitchUUID(switchName)
     switchIntList = getIntList(switchUUID)
     switchIntDict = {}
     for item in switchIntList:
         switchIntDict[item['id']] = item['portName']
-    switchInfo = getDeviceInfo(switchUUID)
+    switchInfo = getDeviceInfo(switchName)
     for item in switchInfo['deviceInterfaceInfo']:
         switchName = getSwitchName(switchUUID)
         intId = item['interfaceId']
@@ -460,15 +497,15 @@ def printExport(switchname):
         print(switchName, intName, authProfileName, dataNetName, voiceNetName)
     print("Exporting Complete")
 
-def exportDNAC(switchname):
-    print("Exporting Config for ", switchname)
+def exportDNAC(switchName):
+    print("Exporting Config for", switchName)
     # args.file = "export.csv"
-    switchUUID = getSwitchUUID(switchname)
+    switchUUID = getSwitchUUID(switchName)
     switchIntList = getIntList(switchUUID)
     switchIntDict = {}
     for item in switchIntList:
         switchIntDict[item['id']] = item['portName']
-    switchInfo = getDeviceInfo(switchUUID)
+    switchInfo = getDeviceInfo(switchName)
     with open(args.output, "w") as csvfile:
         exportwriter = csv.writer(csvfile, delimiter=',')
         exportwriter.writerow(['Switch Name', 'Interface', 'Address Pool(VN)', 'Voice Pool(VN)', 'Authentication'])
@@ -504,7 +541,7 @@ def backupDNAC():
             switchIntDict = {}
             for item in switchIntList:
                 switchIntDict[item['id']] = item['portName']
-                switchInfo = getDeviceInfo(switchUUID)
+                switchInfo = getDeviceInfo(switchName)
                 for item in switchInfo['deviceInterfaceInfo']:
                     switchName = getSwitchName(switchUUID)
                     intId = item['interfaceId']
@@ -541,7 +578,7 @@ def convertConfigYML(inpath,outpath):
     for filename in glob.glob(os.path.join(inpath, '*.yml')):
         # read each filename and conver it one by one.
         with open(filename,'r') as cfgfile:
-                cfg = yaml.load(cfgfile)
+                cfg = yaml.load(cfgfile, Loader=yaml.Loader)
         #build file output name based on existing config name
         filename_base, file_extension = os.path.splitext(filename)
         # Normalize the original filename with the stack key in it.
@@ -811,7 +848,7 @@ def findHost(mac):
     print("Searching for Mac Address: ", mac)
     response = lookupHostMac(mac)
     # This should be a singular response.
-    print("Host IP: ", response['hostIp'])
+    print("Host IP:", response['hostIp'])
     print("Host MAC:", response['hostMac'])
     print("Switch Device IP:", response['connectedNetworkDeviceIpAddress'])
     print("Switch Name:", response['connectedNetworkDeviceName'])
@@ -820,7 +857,7 @@ def findHost(mac):
 
 def findPhonePartial(mac):
     # Takes a MAC and searches for a partial match. Strips : from the user input and the responses.
-    print("Searching for Phone MAC Addresses ending with ", mac)
+    print("Searching for Phone MAC Addresses ending with", mac)
     response = getPhoneList()
     mac = mac.lower()
     mac = re.sub(':','',mac)
@@ -832,7 +869,7 @@ def findPhonePartial(mac):
             # We found the MAC, break out and print it.
             break
     if mac in newmac:
-        print("Host IP: ", item['hostIp'])
+        print("Host IP:", item['hostIp'])
         print("Host MAC:", item['hostMac'])
         print("Switch Device IP:", item['connectedNetworkDeviceIpAddress'])
         print("Switch Name:", item['connectedNetworkDeviceName'])

@@ -1,10 +1,10 @@
 # Cisco DNA Controller SD-Access Bulk Operations 
 Author: Jason Barbee
 
-Contributions by: Jeremy Sanders, Heath Kuespert(htothek)
+Contributions by: Jeremy Sanders, Heath Kuespert(htothek), Andrew Smith
 
-Tested with DNA 1.1.1, 1.1.2, 1.1.4, 1.1.6, 1.1.8, 1.2.5
-Latest Version tested DNA 1.2.5
+Tested with DNA 1.1.1, 1.1.2, 1.1.4, 1.1.6, 1.1.8, 1.2.5, 2.2.3
+Latest Version tested DNA 2.2.3
 
 # Features
 * Imports CSV to DNA Switch ports
